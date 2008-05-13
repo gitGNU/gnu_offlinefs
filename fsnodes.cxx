@@ -293,17 +293,22 @@ File::File(Database& db,uint64_t id):Node(db,id) {
 
 
 auto_ptr<File> File::create(Database& db){
-   auto_ptr<Node> n(Node::create(db));
-   n->setattr<mode_t>("offlinefs.mode",S_IFREG);
-   return auto_ptr<File>(new File(db,n->getid()));
+   File* f= new File(db,Node::create(db)->getid());
+   f->setattr<mode_t>("offlinefs.mode",S_IFREG);
+   Medium::defaultmedium(db)->addfile(*this);
+   return auto_ptr<File>(f);
 }
 
 auto_ptr<File> File::create(Database& db,string path){
-   auto_ptr<Node> n(Node::create(db,path));
-   n->setattr<mode_t>("offlinefs.mode",S_IFREG);
-   return auto_ptr<File>(new File(db,n->getid()));
+   File* f= new File(db,Node::create(db,path)->getid());
+   f->setattr<mode_t>("offlinefs.mode",S_IFREG);
+   Medium::defaultmedium(db)->addfile(*this);
+   return auto_ptr<File>(f);
 }
 
+auto_ptr<Medium> File::getmedium(){
+   return Medium::getmedium(db,getattr<uint32_t>("offlinefs.mediumid"));
+}
 
 Symlink::Symlink(Database& db,uint64_t id):Node(db,id) {
 }

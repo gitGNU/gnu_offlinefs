@@ -86,12 +86,16 @@ class Directory:public Node{
       static std::auto_ptr<Directory> create(Database& db,std::string path);
 };
 
+class Medium;
+
 class File:public Node{
    public:
       File(Database& db, uint64_t id);
 
       static std::auto_ptr<File> create(Database& db);
       static std::auto_ptr<File> create(Database& db,std::string path);
+
+      static std::auto_ptr<Medium> getmedium();
 };
 
 class Symlink:public Node{

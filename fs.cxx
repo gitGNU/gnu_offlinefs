@@ -200,9 +200,10 @@ int FS::truncate(const char* path, off_t length){
 }
 
 int FS::open(const char* path, struct fuse_file_info* fi){
+//FIXME: race condition possible
    try{
       auto_ptr<Node> n=Node::getnode(db,path);
-      auto_ptr<Source> s=Medium::getmedium(db,n->getattr<uint32_t>("offlinefs.mediumid"))->getsource(dynamic_cast<File&>(*n));
+      auto_ptr<Source> s=->getsource(dynamic_cast<File&>(*n));
       for(int i=0;i<MAX_OPEN_FILES;i++)
 	 if(openFiles[i]==NULL){
 	    openFiles[i]=s.release();
@@ -228,8 +229,19 @@ int FS::write(const char* path, const char* buf, size_t nbyte, off_t offset, str
 }
 
 int FS::statfs(const char* path, struct statvfs* buf){
-   memset(buf,0,sizeof(struct statvfs));
-   return 0;
+   try{
+      Medium::Stats st=Medium::collectstats(db);
+      memset(buf,0,sizeof(struct statvfs));
+      buf->f_bsize=4096;
+      buf->f_frsize=4096;
+      buf->f_blocks=st.blocks;
+      buf->f_bfree=st.freeblocks;
+      buf->f_bavail=st.freeblocks;
+      buf->f_namemax=0;
+      return 0;
+   }catch(exception& e){
+      return errcode(e);
+   }
 }
 
 int FS::flush(const char* path, struct fuse_file_info* fi){

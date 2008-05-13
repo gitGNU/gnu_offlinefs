@@ -21,6 +21,12 @@ class Medium{
       virtual int truncate(File& f)=0;
 
 
+      virtual Stats getstats()=0;
+      static Stats collectstats(Database& db);
+
+      virtual void addfile(File& f)=0;
+      virtual void delfile(File& f)=0;
+
 };
 
 #endif
