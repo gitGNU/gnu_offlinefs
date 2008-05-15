@@ -1,16 +1,18 @@
 #ifndef FS_HXX
 #define FS_HXX
 
-#define _FILE_OFFSET_BITS 64
-#define FUSE_USE_VERSION 26
-#include <fuse.h>
+#include "common.hxx"
+#include "fsdb.hxx"
 #include "fsnodes.hxx"
+#include "source.hxx"
+#include "medium.hxx"
 
 #define MAX_OPEN_FILES 512
 
 class FS{
-      Database db;
+   private:      
       Source* openFiles[MAX_OPEN_FILES];
+      FsDb dbs;
    public:
       FS();
       ~FS();
@@ -40,6 +42,7 @@ class FS{
       int listxattr(const char* path , char* list, size_t size);
       int removexattr(const char* path, const char* name);
       int utimens(const char* path, const struct timespec tv[2]);
+      int access(const char* path, int mode);
 
 };
 

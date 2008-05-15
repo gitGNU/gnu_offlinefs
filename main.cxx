@@ -1,4 +1,4 @@
-#include <iostream>
+#include "common.hxx"
 #include "fs.hxx"
 
 void* init_(fuse_conn_info* conn){
@@ -109,6 +109,10 @@ int utimens_(const char* path, const struct timespec tv[2]){
    return ((FS*)fuse_get_context()->private_data)->utimens(path,tv);
 }
 
+int access_(const char* path, int mode){
+   return ((FS*)fuse_get_context()->private_data)->access(path,mode);
+}
+
 int main(int argc, char** argv){
   fuse_operations ops;
 
@@ -140,6 +144,7 @@ int main(int argc, char** argv){
   ops.listxattr=listxattr_;
   ops.removexattr=removexattr_;
   ops.utimens=utimens_;
+  ops.access=access_;
 
   return fuse_main(argc, argv,&ops,NULL);
 }
