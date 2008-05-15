@@ -1,6 +1,7 @@
 #ifndef COMMON_HXX
 #define COMMON_HXX
 
+#define OFFLINEFS_VERSION "0.1"
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
 #include <fuse.h>

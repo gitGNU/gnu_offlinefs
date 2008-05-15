@@ -1,8 +1,54 @@
 #include "common.hxx"
 #include "fs.hxx"
+#include <fuse/fuse_opt.h>
+#include <stddef.h>
+
+
+struct Params{
+      char* dbroot;
+      bool help;
+} params={NULL,false};
+
+enum{
+   KEY_VERSION,
+   KEY_HELP,
+};
+
+struct fuse_opt opts[] ={
+   {"dbroot=%s",offsetof(Params,dbroot),0},
+   FUSE_OPT_KEY("-V", KEY_VERSION),
+   FUSE_OPT_KEY("--version", KEY_VERSION),
+   FUSE_OPT_KEY("-h", KEY_HELP),
+   FUSE_OPT_KEY("--help", KEY_HELP),
+   {NULL,0,0}
+};
+
+void usage(){
+   std::cerr << "usage: offlinefs mountpoint [options]\n";
+   std::cerr << "\n";
+   std::cerr << "offlinefs options:\n";
+   std::cerr << "\t-h\t--help\t\tprint help\n";
+   std::cerr << "\t-V\t--version\tprint version\n";
+   std::cerr << "\t-o dbroot=<dbroot>\tDatabase root (mandatory)\n";
+   std::cerr << std::endl;
+}
+
+int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
+   if(key==KEY_VERSION){
+      std::cerr << "offlinefs version: " << OFFLINEFS_VERSION << std::endl;
+      ((Params*)data)->help=true;
+      return 1;
+   }else if(key==KEY_HELP){
+      usage();
+      fuse_opt_add_arg(outargs,"-ho");
+      ((Params*)data)->help=true;
+      return 0;
+   }else
+      return 1;
+}
 
 void* init_(fuse_conn_info* conn){
-   return new FS();
+   return new FS(((Params*)fuse_get_context()->private_data)->dbroot);
 }
 
 void destroy_(void *userdata){
@@ -146,5 +192,21 @@ int main(int argc, char** argv){
   ops.utimens=utimens_;
   ops.access=access_;
 
-  return fuse_main(argc, argv,&ops,NULL);
+  struct fuse_args args = FUSE_ARGS_INIT(argc,argv);
+  if(fuse_opt_parse(&args,&params,opts,opt_proc)){
+     std::cerr << "Error parsing command line" << std::endl;
+     return -1;
+  }
+
+  if(!params.dbroot&&!params.help){
+     std::cerr << "No database root specified!\n";
+     usage();
+     return -1;
+  }
+
+  int err= fuse_main(args.argc, args.argv,&ops,&params);
+
+  fuse_opt_free_args(&args);
+
+  return err;
 }

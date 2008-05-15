@@ -6,7 +6,7 @@ using std::string;
 using std::exception;
 using std::list;
 
-FS::FS():dbs("/home/curro/fs/offlinefs/db/"){
+FS::FS(string dbroot):dbs(dbroot){
    memset(openFiles,0,sizeof(openFiles));
 }
 
@@ -138,7 +138,9 @@ int FS::rmdir(const char* path){
    try{
       checkparentaccess(dbs,path,X_OK|W_OK);
       Directory::Path p(dbs,path);
-      if(p.parent->getchildren().size()>2)
+      auto_ptr<Node> n=p.parent->getchild(p.leaf);
+      Directory& d=dynamic_cast<Directory&>(*n);
+      if(d.getchildren().size()>2)
 	 return -ENOTEMPTY;
       p.parent->delchild(p.leaf);
    }catch(exception& e){

@@ -14,7 +14,7 @@ class FS{
       Source* openFiles[MAX_OPEN_FILES];
       FsDb dbs;
    public:
-      FS();
+      FS(std::string dbroot);
       ~FS();
 
       int getattr(const char* path, struct stat* st);
