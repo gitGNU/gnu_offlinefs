@@ -43,7 +43,7 @@ int Source_file::read(char* buf, size_t nbyte, off_t offset){
 }
 
 int Source_file::write(const char* buf, size_t nbyte, off_t offset){
-   if((nbyte+offset)>size)
+   if(((off_t)nbyte+offset)>size)
       size=nbyte+offset;
    return pwrite(fd,buf,nbyte,offset);
 }
