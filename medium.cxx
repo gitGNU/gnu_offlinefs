@@ -146,7 +146,8 @@ bool Medium_mount::check(){
 bool Medium_mount::ask(){
    Buffer b=getattrv("label");
    string label(b.data,b.size);
-   string command="kdialog --warningcontinuecancel  \"Insert volume: \\\""+ label +"\\\"\" --title \"Insert volume\" --name offlinefs --caption offlinefs";
+//   string command="kdialog --warningcontinuecancel  \"Insert volume: \\\""+ label +"\\\"\" --title \"Insert volume\" --name offlinefs --caption offlinefs";
+   string command="offlinefs_ask.sh \"" + label + "\"";
    int err=system(command.c_str());
    if(err==-1)
       throw std::runtime_error("Medium_mount::ask: error calling system.");
