@@ -1,7 +1,6 @@
 #ifndef DATABASE_HXX
 #define DATABASE_HXX
 
-#include <db_cxx.h>
 #include "common.hxx"
 
 class Environment{

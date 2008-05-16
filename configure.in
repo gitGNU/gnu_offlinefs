@@ -1,0 +1,45 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ(2.61)
+AC_INIT([offlinefs], [0.1], [currojerez@gmail.com])
+AM_INIT_AUTOMAKE
+AC_LANG(C++)
+
+AC_CONFIG_SRCDIR([fsnodes/symlink.hxx])
+AC_CONFIG_HEADER([config.h])
+
+# Checks for programs.
+AC_PROG_CXX
+
+# Checks for libraries.
+AC_CHECK_LIB([db_cxx],[main],,[AC_MSG_ERROR([Berkeley DB library (c++) not found.])])
+AC_CHECK_LIB([fuse], [fuse_main_real],,[AC_MSG_ERROR([Fuse library not found])])
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS([fcntl.h stddef.h stdlib.h sys/statvfs.h unistd.h])
+
+AC_CHECK_HEADERS([db_cxx.h db4.5/db_cxx.h])
+if test "$ac_cv_header_db_cxx_h" = no && test "$ac_cv_header_db4_5_db_cxx_h" = no; then 
+   AC_MSG_ERROR([Berkeley DB headers not found.])
+fi
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_HEADER_STDBOOL
+AC_C_CONST
+AC_TYPE_UID_T
+AC_C_INLINE
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_SIZE_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+
+# Checks for library functions.
+AC_FUNC_CHOWN
+AC_FUNC_STAT
+AC_CHECK_FUNCS([fdatasync memset mkdir uname])
+
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT

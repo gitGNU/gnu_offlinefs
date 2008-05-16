@@ -1,7 +1,7 @@
 #ifndef COMMON_HXX
 #define COMMON_HXX
 
-#define OFFLINEFS_VERSION "0.1"
+#include "config.h"
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -18,5 +18,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <utility>
+
+#ifdef HAVE_DB_CXX_H
+#include <db_cxx.h>
+#elif defined HAVE_DB4_5_DB_CXX_H
+#include <db4.5/db_cxx.h>
+#endif
 
 #endif

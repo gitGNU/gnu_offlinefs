@@ -35,7 +35,7 @@ void usage(){
 
 int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
    if(key==KEY_VERSION){
-      std::cerr << "offlinefs version: " << OFFLINEFS_VERSION << std::endl;
+      std::cerr << "offlinefs version: " << VERSION << std::endl;
       ((Params*)data)->help=true;
       return 1;
    }else if(key==KEY_HELP){
