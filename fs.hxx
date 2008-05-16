@@ -6,11 +6,13 @@
 #include "fsnodes.hxx"
 #include "source.hxx"
 #include "medium.hxx"
+#include <pthread.h>
 
 #define MAX_OPEN_FILES 512
 
 class FS{
    private:      
+      pthread_mutex_t openmutex;
       Source* openFiles[MAX_OPEN_FILES];
       FsDb dbs;
    public:

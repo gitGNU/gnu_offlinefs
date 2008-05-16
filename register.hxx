@@ -1,4 +1,5 @@
 
+
 template<typename T> Database<T>::Register::EAttrNotFound::EAttrNotFound():runtime_error("Database::Register::EAttrNotFound") {}
 
 template<typename T>
@@ -16,23 +17,13 @@ template<typename S> void Database<T>::Register::setattr(std::string name,S v){
 }
 
 template<typename T>
-Database<T>::Register::Register(Database<T>& db,T id):db(db),id(id),cur(NULL) {
-   db.db->cursor(NULL,&cur,0);
-}
+Database<T>::Register::Register(Database<T>& db,T id):db(db),id(id) {}
 
 template<typename T>
-Database<T>::Register::Register(const Register& r):db(r.db),id(r.id),cur(NULL) {
-   db.db->cursor(NULL,&cur,0);
-}
+Database<T>::Register::Register(const Register& r):db(r.db),id(r.id) {}
 
 template<typename T>
-Database<T>::Register::~Register(){
-   try{
-      if(cur){
-	 cur->close();
-      }
-   }catch(...){}
-}
+Database<T>::Register::~Register(){}
 
 
 template<typename T>
@@ -53,7 +44,7 @@ Buffer Database<T>::Register::getattrv(std::string name){
    Dbt v;
    v.set_flags(DB_DBT_MALLOC);
    key.set_flags(DB_DBT_MALLOC);
-   if(cur->get(&key,&v,DB_SET))
+   if(db.db->get(NULL,&key,&v,0))
       throw EAttrNotFound();
    return Buffer((char*)v.get_data(),v.get_size());
 }
@@ -80,15 +71,27 @@ std::list<std::string> Database<T>::Register::getattrs(){
    std::list<std::string> l;
    Dbt key(&id,sizeof(T));
    Dbt v;
-   int err=cur->get(&key,&v,DB_SET_RANGE);
-
-   while(!err && key.get_size()>=sizeof(Key) && ((Key*)key.get_data())->id==id){      
-      l.push_back(std::string(((Key*)key.get_data())->text,key.get_size()-sizeof(T)));
-      err=cur->get(&key,&v,DB_NEXT);
+   Dbc* cur=NULL;
+   db.db->cursor(NULL,&cur,0);
+   try{
+      int err=cur->get(&key,&v,DB_SET_RANGE);
+      
+      while(!err && key.get_size()>=sizeof(Key) && ((Key*)key.get_data())->id==id){      
+	 if(key.get_size()>sizeof(Key))
+	    l.push_back(std::string(((Key*)key.get_data())->text,key.get_size()-sizeof(T)));
+	 err=cur->get(&key,&v,DB_NEXT);
+      }
+      if(err && err!=DB_NOTFOUND)
+	 throw std::runtime_error("Database::Register::getattrs: Error accessing the database.");
+      
+   }catch(...){
+      cur->close();
+      cur=NULL;
+      throw;
    }
+   cur->close();
+   cur=NULL;
 
-   if(err && err!=DB_NOTFOUND)
-      throw std::runtime_error("Database::Register::getattrs: Error accessing the database.");
 
    return l;
 }
@@ -98,5 +101,7 @@ void Database<T>::Register::remove(){
    std::list<std::string> l=getattrs();
    for(std::list<std::string>::iterator it=l.begin();it!=l.end();it++)
       delattr(*it);
+   Dbt key(&id,sizeof(T));
+   db.db->del(NULL,&key,0);
 }
 

@@ -72,7 +72,5 @@ Directory::Path::Path(FsDb& dbs,string path){
       leaf=path.substr(slashpos+1,notslash-slashpos);
       parentpath=path.substr(0,slashpos);
    }
-   parent.reset((Directory*)Node::getnode(dbs,parentpath).release());
-   if(!dynamic_cast<Directory*>(parent.get()))
-      throw ENotDir();
+   parent=cast<Directory>(Node::getnode(dbs,parentpath));
 }

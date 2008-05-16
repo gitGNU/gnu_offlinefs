@@ -2,6 +2,7 @@
 #define DATABASE_HXX
 
 #include "common.hxx"
+#include <asm/byteorder.h>
 
 class Environment{
    public:
@@ -27,6 +28,7 @@ class Buffer{
 
 template<typename T>
 class Database{
+      T incrId(T id);
       DbEnv* dbenv;
       std::string name;
       Db* db;
@@ -35,7 +37,6 @@ class Database{
 	 private:
 	    Database<T>& db;
 	    T id;
-	    Dbc* cur;
 	    Buffer mkey(std::string attr);
 	 public:
 	    struct Key{
@@ -79,30 +80,43 @@ template<typename T>
 T Database<T>::createregister(){
    T id=(T)0;
    Dbc* cur;
+   DbTxn* txn;
    Dbt key;
    Dbt v;
    int err;
-   db->cursor(NULL,&cur,0);
+   dbenv->txn_begin(NULL,&txn,0);
    try{
-      err=cur->get(&key,&v,DB_LAST);
-   }catch(...){
+      db->cursor(txn,&cur,0);
+      try{
+	 err=cur->get(&key,&v,DB_LAST);
+      
+	 if(err!=DB_NOTFOUND){
+	    if(err || key.get_size()<sizeof(typename Register::Key))
+	       throw std::runtime_error("Database::createregister: Error reading from the database.");
+	    id=incrId(((typename Register::Key*)key.get_data())->id);
+	 }
+	 key.set_data(&id);
+	 key.set_size(sizeof(T));
+	 v.set_data(NULL);
+	 v.set_size(0);
+	 cur->put(&key,&v,DB_KEYFIRST);
+      }catch(...){
+	 cur->close();
+	 throw;
+      }
       cur->close();
+   }catch(...){
+      txn->abort();
       throw;
    }
-   cur->close();
-      
-   if(err!=DB_NOTFOUND){
-      if(err || key.get_size()<sizeof(typename Register::Key))
-	 throw std::runtime_error("Database::createregister: Error reading from the database.");
-      id=((typename Register::Key*)key.get_data())->id+(T)1;   
-   }
+   txn->commit(0);
    return id;
 }
 
 template<typename T>
 std::list<T> Database<T>::listregisters(){
    Dbc* cur;
-   uint32_t lastid=(uint32_t)0;
+   T lastid=(T)0;
    Dbt k;
    Dbt v;
    std::list<T> l;
@@ -110,7 +124,7 @@ std::list<T> Database<T>::listregisters(){
    int err=cur->get(&k,&v,DB_FIRST);
    l.push_back(lastid);
    while(!err && k.get_size()>=sizeof(typename Register::Key)){
-      uint32_t id=((typename Register::Key*)k.get_data())->id;
+      T id=((typename Register::Key*)k.get_data())->id;
       if(id!=lastid){
 	 l.push_back(id);
 	 lastid=id;
@@ -152,6 +166,18 @@ void Database<T>::rebuild(){
    db=new Db(dbenv,0);
    db->open(NULL,"offlinefs.db",name.c_str(),DB_BTREE,DB_AUTO_COMMIT|DB_CREATE|DB_THREAD,0);
    db->truncate(NULL,NULL,0);
+}
+
+template<typename T>
+T Database<T>::incrId(T id){
+//Dirty hack to allow using arbitrary T...
+   std::cerr << "!!!!!!" << std::endl;
+   char* p=(char*)&id+sizeof(T);
+   do{
+      p--;
+      (*p)++;
+   }while(p!=(char*)&id && !*p);
+   return id;
 }
 
 #include "register.hxx"

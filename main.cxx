@@ -2,12 +2,14 @@
 #include "fs.hxx"
 #include <fuse/fuse_opt.h>
 #include <stddef.h>
-
+#include <stdlib.h>
 
 struct Params{
-      char* dbroot;
+      const char* dbroot;
       bool help;
 } params={NULL,false};
+
+std::string dbroot_default;
 
 enum{
    KEY_VERSION,
@@ -29,7 +31,7 @@ void usage(){
    std::cerr << "offlinefs options:\n";
    std::cerr << "\t-h\t--help\t\tprint help\n";
    std::cerr << "\t-V\t--version\tprint version\n";
-   std::cerr << "\t-o dbroot=<dbroot>\tDatabase root (mandatory)\n";
+   std::cerr << "\t-o dbroot=<dbroot>\tDatabase root\n";
    std::cerr << std::endl;
 }
 
@@ -193,13 +195,18 @@ int main(int argc, char** argv){
   ops.access=access_;
 
   struct fuse_args args = FUSE_ARGS_INIT(argc,argv);
+
+  if(getenv("HOME")){
+     dbroot_default=std::string(getenv("HOME"))+"/.offlinefs/";
+     params.dbroot=dbroot_default.c_str();
+  }
   if(fuse_opt_parse(&args,&params,opts,opt_proc)){
      std::cerr << "Error parsing command line" << std::endl;
      return -1;
   }
 
   if(!params.dbroot&&!params.help){
-     std::cerr << "No database root specified!\n";
+     std::cerr << "No database root found!\n";
      usage();
      return -1;
   }

@@ -50,7 +50,7 @@ int Source_file::write(const char* buf, size_t nbyte, off_t offset){
 
 int Source_file::flush(){
    f.setattr<off_t>("offlinefs.size",size);
-   return fsync(fd);
+   return 0;
 }
 
 inline int real_fsync(int fd){

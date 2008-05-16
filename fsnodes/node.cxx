@@ -10,8 +10,6 @@ using std::string;
 
 Node::ENotFound::ENotFound():runtime_error("Node::ENotFound") {}
 
-Node::ENotDir::ENotDir():runtime_error("Node::ENotDir") {}
-
 Node::EAccess::EAccess():runtime_error("Node::EAccess") {}
 
 
@@ -63,28 +61,22 @@ std::auto_ptr<Node> Node::getnode(FsDb& dbs, uint64_t id){
 }
 
 std::auto_ptr<Node> Node::getnode(FsDb& dbs, std::string path){
-   try{
-      auto_ptr<Node> n = Node::getnode(dbs,0);
-      string::size_type pos=0;
-      string::size_type newpos=0;
+   auto_ptr<Node> n = Node::getnode(dbs,0);
+   string::size_type pos=0;
+   string::size_type newpos=0;
       
-      while((newpos=path.find("/",pos))!=string::npos){
-	 if(newpos!=pos){
-	    Directory& d=dynamic_cast<Directory&>(*n.get());
-	    n=d.getchild(path.substr(pos,newpos-pos));
-	 }	 
-	 pos=newpos+1;
-      }
+   while((newpos=path.find("/",pos))!=string::npos){
+      if(newpos!=pos){
+	 n=cast<Directory>(n)->getchild(path.substr(pos,newpos-pos));
+      }	 
+      pos=newpos+1;
+   }
       
-      string name=path.substr(pos,newpos);
-      if(name.empty())
-	 return n;
-      else{
-	 Directory& d=dynamic_cast<Directory&>(*n.get());
-	 return d.getchild(path.substr(pos,newpos));
-      }
-   }catch(std::bad_cast& e){
-      throw ENotDir();
+   string name=path.substr(pos,newpos);
+   if(name.empty())
+      return n;
+   else{
+      return cast<Directory>(n)->getchild(path.substr(pos,newpos));
    }
 }
 

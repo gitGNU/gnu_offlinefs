@@ -8,29 +8,36 @@ using std::list;
 
 FS::FS(string dbroot):dbs(dbroot){
    memset(openFiles,0,sizeof(openFiles));
+   if(pthread_mutex_init(&openmutex,NULL))
+      throw std::runtime_error("FS::FS: error initializing the mutex.");
 }
 
 FS::~FS(){
+   pthread_mutex_lock(&openmutex);
    for(int i=0;i<MAX_OPEN_FILES;i++)
       if(openFiles[i]!=NULL)
 	 delete openFiles[i];
+   pthread_mutex_unlock(&openmutex);
+   pthread_mutex_destroy(&openmutex);
 }
 
 int errcode(exception& e){
    if(typeid(e)==typeid(Node::ENotFound))
       return -ENOENT;
-   else if(typeid(e)==typeid(std::bad_cast))
+   else if(typeid(e)==typeid(Node::EBadCast<Directory>))
       return -ENOTDIR;
+   else if(typeid(e)==typeid(Node::EBadCast<Symlink>))
+      return -EINVAL;
+   else if(typeid(e)==typeid(Node::EBadCast<File>))
+      return -EINVAL;
    else if(typeid(e)==typeid(Node::EAttrNotFound))
       return -EIO;
-   else if(typeid(e)==typeid(Node::ENotDir))
-      return -ENOTDIR;
    else if(typeid(e)==typeid(Directory::EExists))
       return -EEXIST;
    else if(typeid(e)==typeid(Node::EAccess))
       return -EACCES;
    else{
-      std::cout << e.what() << "!!" <<std::endl;
+      std::cerr << e.what() << "!!" <<std::endl;
       return -EIO;
    }
 }
@@ -60,10 +67,9 @@ int FS::getattr(const char* path, struct stat* st){
 int FS::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info* fi){ 
    try{
       checkaccess(dbs,path,X_OK|R_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,string(path));
+      auto_ptr<Directory> n=Node::cast<Directory>(Node::getnode(dbs,string(path)));
       n->setattr<time_t>("offlinefs.atime",time(NULL));
-      Directory& d=dynamic_cast<Directory&>(*n);
-      list<string> l=d.getchildren();
+      list<string> l=n->getchildren();
       for(list<string>::iterator it=l.begin();it!=l.end();it++)
 	 filler(buf,it->c_str(),NULL,0);
    }catch(exception& e){
@@ -75,9 +81,8 @@ int FS::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offse
 int FS::readlink(const char* path, char* buf, size_t bufsiz){
    try{
       checkaccess(dbs,path,0);
-      auto_ptr<Node> n=Node::getnode(dbs,string(path));
-      Symlink& sl=dynamic_cast<Symlink&>(*n);
-      Buffer target=sl.getattrv("offlinefs.symlink");
+      auto_ptr<Symlink> n=Node::cast<Symlink>(Node::getnode(dbs,string(path)));
+      Buffer target=n->getattrv("offlinefs.symlink");
       memcpy(buf,target.data,MIN(bufsiz,target.size));
       if(target.size<bufsiz)
 	 buf[target.size]=0;
@@ -107,6 +112,8 @@ int FS::mknod(const char* path , mode_t mode, dev_t dev){
 
 int FS::mkdir(const char* path, mode_t mode){
    try{
+      if(string(path)=="/Software/Sistema/Drivers/SyncMaster151s/man/img/select/hun")
+	 std::cout << path <<std::endl;
       checkparentaccess(dbs,path,X_OK|W_OK);
       auto_ptr<Directory> n=Directory::create(dbs,string(path));
       n->setattr<time_t>("offlinefs.atime",time(NULL));
@@ -138,9 +145,8 @@ int FS::rmdir(const char* path){
    try{
       checkparentaccess(dbs,path,X_OK|W_OK);
       Directory::Path p(dbs,path);
-      auto_ptr<Node> n=p.parent->getchild(p.leaf);
-      Directory& d=dynamic_cast<Directory&>(*n);
-      if(d.getchildren().size()>2)
+      auto_ptr<Directory> n=Node::cast<Directory>(p.parent->getchild(p.leaf));
+      if(n->getchildren().size()>2)
 	 return -ENOTEMPTY;
       p.parent->delchild(p.leaf);
    }catch(exception& e){
@@ -240,11 +246,10 @@ int FS::chown(const char* path, uid_t owner, gid_t group){
 int FS::truncate(const char* path, off_t length){
    try{
       checkaccess(dbs,path,W_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
+      auto_ptr<File> n=Node::cast<File>(Node::getnode(dbs,path));
       n->setattr<time_t>("offlinefs.mtime",time(NULL));
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
-      File& f=dynamic_cast<File&>(*n);
-      return f.getmedium(path)->truncate(f,length);
+      return n->getmedium(path)->truncate(*n,length);
    }catch(exception& e){
       return errcode(e);
    }
@@ -252,26 +257,32 @@ int FS::truncate(const char* path, off_t length){
 }
 
 int FS::open(const char* path, struct fuse_file_info* fi){
-//FIXME: race condition possible
    try{
       if((fi->flags&O_ACCMODE)==O_RDONLY||(fi->flags&O_ACCMODE)==O_RDWR)
 	 checkaccess(dbs,path,R_OK);
       if((fi->flags&O_ACCMODE)==O_WRONLY||(fi->flags&O_ACCMODE)==O_RDWR)
 	 checkaccess(dbs,path,W_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
-      try{
-	 File& f=dynamic_cast<File&>(*n);
-	 auto_ptr<Source> s=f.getmedium(path)->getsource(f,fi->flags);
-	 for(int i=0;i<MAX_OPEN_FILES;i++)
+      auto_ptr<File> n=Node::cast<File>(Node::getnode(dbs,path));
+      auto_ptr<Source> s=n->getmedium(path)->getsource(*n,fi->flags);
+
+      for(int i=0;i<MAX_OPEN_FILES;i++)
+	 if(openFiles[i]==NULL){
+	    if(pthread_mutex_lock(&openmutex))
+	       throw std::runtime_error("FS::open: error locking mutex.");
 	    if(openFiles[i]==NULL){
 	       openFiles[i]=s.release();
 	       fi->fh=i;
+	       if(pthread_mutex_unlock(&openmutex))
+		  throw std::runtime_error("FS::open: error unlocking mutex.");
 	       return 0;
 	    }
-	 return -ENFILE;
-      }catch(std::bad_cast& e){
-	 return -EISDIR;
-      }
+	    if(pthread_mutex_unlock(&openmutex))
+	       throw std::runtime_error("FS::open: error unlocking mutex.");
+	 }
+
+      return -ENFILE;
+   }catch(Node::EBadCast<File>& e){
+      return -EISDIR;
    }catch(exception& e){
       return errcode(e);
    }

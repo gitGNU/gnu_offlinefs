@@ -20,10 +20,14 @@ AC_CHECK_LIB([fuse], [fuse_main_real],,[AC_MSG_ERROR([Fuse library not found])])
 AC_HEADER_STDC
 AC_CHECK_HEADERS([fcntl.h stddef.h stdlib.h sys/statvfs.h unistd.h])
 
+AC_CHECK_HEADER([asm/byteorder.h],,[AC_MSG_ERROR([<asm/byteorder.h> header not found!])])
+
 AC_CHECK_HEADERS([db_cxx.h db4.5/db_cxx.h])
 if test "$ac_cv_header_db_cxx_h" = no && test "$ac_cv_header_db4_5_db_cxx_h" = no; then 
    AC_MSG_ERROR([Berkeley DB headers not found.])
 fi
+
+AC_CHECK_HEADER([pthread.h],,[AC_MSG_ERROR([<pthread.h> not found!])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
