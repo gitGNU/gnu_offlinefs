@@ -19,7 +19,7 @@ std::auto_ptr<Medium> Medium::getmedium(FsDb& dbs, uint32_t id){
    if(mediumtype=="directory")
       return std::auto_ptr<Medium>(new Medium_directory(dbs,id));
    else if(mediumtype=="mount")
-      return std::auto_ptr<Medium>(new Medium_mount(dbs,id));
+      return std::auto_ptr<Medium>(new Medium_insert(dbs,id));
    throw ENotFound();
 }
       
@@ -101,76 +101,63 @@ void Medium_directory::delfile(File& f){
 }
 
 
-std::auto_ptr<Medium_mount> Medium_mount::create(FsDb& dbs,string path,string label,string checkcmd){
+std::auto_ptr<Medium_insert> Medium_insert::create(FsDb& dbs,string path,string label,string checkcmd){
    auto_ptr<Medium_directory> r=Medium_directory::create(dbs,path);
    string mediumtype("mount");
    r->setattrv("mediumtype",Buffer(mediumtype.c_str(),mediumtype.size()));
    r->setattrv("label",Buffer(label.c_str(),label.size()));
    r->setattrv("checkcmd",Buffer(checkcmd.c_str(),checkcmd.size()));
-   return auto_ptr<Medium_mount>(new Medium_mount(dbs,r->getid()));
+   return auto_ptr<Medium_insert>(new Medium_insert(dbs,r->getid()));
 }
 
-std::auto_ptr<Source> Medium_mount::getsource(File& f,int mode){
+std::auto_ptr<Source> Medium_insert::getsource(File& f,int mode){
    insert();
    return Medium_directory::getsource(f,mode);
 }
 
-int Medium_mount::truncate(File& f,off_t length){
+int Medium_insert::truncate(File& f,off_t length){
    insert();
    return Medium_directory::truncate(f,length);
 }
 
-Medium::Stats Medium_mount::getstats(){
+Medium::Stats Medium_insert::getstats(){
    insert();
    return Medium_directory::getstats();
 }
 
-void Medium_mount::addfile(File& f,string phid){
+void Medium_insert::addfile(File& f,string phid){
    Medium_directory::addfile(f,phid);
 }
 
-void Medium_mount::delfile(File& f){
+void Medium_insert::delfile(File& f){
    insert();
    Medium_directory::delfile(f);
 }
 
-bool Medium_mount::check(){
+bool Medium_insert::check(){
    Buffer b=getattrv("checkcmd");
    string command(b.data,b.size);
    int err=system(command.c_str());
    if(err==-1)
-      throw std::runtime_error("Medium_mount::check: error calling system.");
+      throw std::runtime_error("Medium_insert::check: error calling system.");
    return (WEXITSTATUS(err)==0);
 }
 
-bool Medium_mount::ask(){
-   Buffer b=getattrv("label");
-   string label(b.data,b.size);
-//   string command="kdialog --warningcontinuecancel  \"Insert volume: \\\""+ label +"\\\"\" --title \"Insert volume\" --name offlinefs --caption offlinefs";
-   string command="offlinefs_ask.sh \"" + label + "\"";
-   int err=system(command.c_str());
-   if(err==-1)
-      throw std::runtime_error("Medium_mount::ask: error calling system.");
-   return (WEXITSTATUS(err)==0);
-}
-
-void Medium_mount::mount(){
-   Buffer b=getattrv("directory");
-   string directory(b.data,b.size);
-   string command="mount "+directory;
-   int err=system(command.c_str());
-   if(err==-1)
-      throw std::runtime_error("Medium_mount::mount: error calling system.");
-   if(WEXITSTATUS(err))
-      throw std::runtime_error("Medium_mount::mount: error mounting the volume.");
-}
-
-void Medium_mount::insert(){
+void Medium_insert::insert(){
    if(!check()){
-      if(!ask())
-	 throw std::runtime_error("Medium_mount::insert: operation cancelled by the user.");
-      mount();
+      Buffer b=getattrv("label");
+      string label(b.data,b.size);
+      b=getattrv("directory");
+      string directory(b.data,b.size);
+      b=getattrv("insertscript");
+      string insertscript(b.data,b.size);
+      string insertcmd="sh "+insertscript+" \""+label+"\" \""+directory+"\"";
+      int err=system(insertcmd.c_str());
+      if(err==-1)
+	 throw std::runtime_error("Medium_insert::insert: error calling system.");
+      if(WEXITSTATUS(err))
+	 throw std::runtime_error("Medium_insert::insert: error inserting the volume.");
       if(!check())
-	 throw std::runtime_error("Medium_mount::insert: check failed.");
+	 throw std::runtime_error("Medium_insert::insert: check failed.");
    }
 }

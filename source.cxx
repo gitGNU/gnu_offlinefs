@@ -10,7 +10,7 @@ Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1
    if(mode&O_ACCMODE==O_RDONLY){
       fd=open(path.c_str(),mode);
    }else{
-      fd=open(path.c_str(),mode|O_CREAT,0600);
+      fd=open(path.c_str(),mode|O_CREAT,0660);
       if(fd==-1 && errno==ENOENT){
 	 //Try to create every parent directory
 	 string::size_type pos=0;
@@ -20,7 +20,7 @@ Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1
 	    if(pos!=newpos){
 	       string dir=path.substr(0,newpos);
 	       if(stat(dir.c_str(),&st)){
-		  if(errno!=ENOENT || mkdir(dir.c_str(),0700))
+		  if(errno!=ENOENT || mkdir(dir.c_str(),0770))
 		     throw std::runtime_error("Source_file::Source_file: error creating parent directories.");
 	       }
 	    }

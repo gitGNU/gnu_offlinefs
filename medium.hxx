@@ -53,15 +53,13 @@ class Medium_directory:public Medium{
       virtual void delfile(File& f);
 };
 
-class Medium_mount:public Medium_directory{
+class Medium_insert:public Medium_directory{
    private:
       bool check();
-      bool ask();
-      void mount();
       void insert();
    public:
-      Medium_mount(FsDb& dbs,uint32_t id):Medium_directory(dbs,id) {}
-      static std::auto_ptr<Medium_mount> create(FsDb& dbs,std::string path,std::string label,std::string checkcmd);
+      Medium_insert(FsDb& dbs,uint32_t id):Medium_directory(dbs,id) {}
+      static std::auto_ptr<Medium_insert> create(FsDb& dbs,std::string path,std::string label,std::string checkcmd);
       virtual std::auto_ptr<Source> getsource(File& f,int mode);
       virtual int truncate(File& f,off_t length);
       virtual Stats getstats();

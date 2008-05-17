@@ -1,0 +1,7 @@
+#!/bin/sh
+user="curro"
+export DISPLAY=:0.0
+export XAUTHORITY=/home/$user/.Xauthority 
+KDIALOG="/usr/kde/3.5/bin/kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
+MOUNT="mount $2"
+su -c "$KDIALOG && $MOUNT" $user

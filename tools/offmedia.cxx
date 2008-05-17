@@ -21,10 +21,10 @@ int usage(std::string prog){
    cerr << prog << " --list [dbroot]\n";
    cerr << prog << " --rm <id> [dbroot]\n";
    cerr << prog << " --mod <id> --<attr0> <value0> --<attr1> <value1> ... [dbroot]\n";
-   cerr << "\t--add: Adds medium of type <type> while setting specified attributes to the specified values.\n";
+   cerr << "\t--add: Add medium of type <type> while setting specified attributes to the specified values.\n";
    cerr << "\t--list: List existing media.\n";
    cerr << "\t--rm: Remove specified medium.\n";
-   cerr << "\t--mod: Modifies specified attributes on media <id>.\n";
+   cerr << "\t--mod: Modify specified attributes on media <id>.\n";
    cerr << "[dbroot] defaults to ~/.offlinefs/\n";
    return 1;
 }
@@ -78,6 +78,7 @@ int modm(uint32_t id,attrlist attrs, string dbroot){
       r.setattrv(it->first,Buffer(it->second.c_str(),it->second.size()));
    return 0;
 }
+
 
 int main(int argc,char* argv[]){
    string dbroot;
