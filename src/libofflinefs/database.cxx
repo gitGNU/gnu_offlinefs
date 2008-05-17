@@ -9,6 +9,7 @@ Environment::Environment(std::string path){
    dbenv=new DbEnv(0);
    dbenv->open(path.c_str(),DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_RECOVER|DB_REGISTER|DB_THREAD,0);
    dbenv->set_lk_detect(DB_LOCK_RANDOM);
+   dbenv->log_archive(NULL,DB_ARCH_REMOVE);
 }
 
 Environment::~Environment(){

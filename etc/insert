@@ -1,7 +1,13 @@
 #!/bin/sh
-user="curro"
+#set_user="curro"
+
 export DISPLAY=:0.0
-export XAUTHORITY=/home/$user/.Xauthority 
+[ -n "$set_user" ] && export XAUTHORITY=/home/$set_user/.Xauthority 
+
 KDIALOG="/usr/kde/3.5/bin/kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
 MOUNT="mount $2"
-su -c "$KDIALOG && $MOUNT" $user
+if [ -n "$set_user" ]; then 
+    su -c "$KDIALOG && $MOUNT" $set_user
+else
+    sh -c "$KDIALOG && $MOUNT"
+fi

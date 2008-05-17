@@ -43,10 +43,14 @@ Buffer Database<T>::Register::getattrv(std::string name){
    Dbt key(bk.data,bk.size);
    Dbt v;
    v.set_flags(DB_DBT_MALLOC);
-   key.set_flags(DB_DBT_MALLOC);
+
    if(db.db->get(NULL,&key,&v,0))
       throw EAttrNotFound();
-   return Buffer((char*)v.get_data(),v.get_size());
+   bk=Buffer((char*)v.get_data(),v.get_size());
+
+   if(v.get_data())
+      free(v.get_data());
+   return bk;
 }
 
 template<typename T>
