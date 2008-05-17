@@ -3,35 +3,47 @@
 #include <fuse/fuse_opt.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <grp.h>
+#include <sstream>
 
 struct Params{
       const char* dbroot;
+      const char* dbgroup;
+      const char* dbumask;
       bool help;
-} params={NULL,false};
+      bool rebuild;
+} params={NULL,NULL,NULL,false,false};
 
 std::string dbroot_default;
 
 enum{
    KEY_VERSION,
    KEY_HELP,
+   KEY_REBUILDDB,
 };
 
 struct fuse_opt opts[] ={
    {"dbroot=%s",offsetof(Params,dbroot),0},
+   {"dbgroup=%s",offsetof(Params,dbgroup),0},
+   {"dbumask=%s",offsetof(Params,dbumask),0},
    FUSE_OPT_KEY("-V", KEY_VERSION),
    FUSE_OPT_KEY("--version", KEY_VERSION),
    FUSE_OPT_KEY("-h", KEY_HELP),
    FUSE_OPT_KEY("--help", KEY_HELP),
+   FUSE_OPT_KEY("--rebuilddb", KEY_REBUILDDB),
    {NULL,0,0}
 };
 
 void usage(){
-   std::cerr << "usage: offlinefs mountpoint [options]\n";
+   std::cerr << "usage: offlinefs [mountpoint] [options]\n";
    std::cerr << "\n";
    std::cerr << "offlinefs options:\n";
    std::cerr << "\t-h\t--help\t\tprint help\n";
    std::cerr << "\t-V\t--version\tprint version\n";
    std::cerr << "\t-o dbroot=<dbroot>\tDatabase root\n";
+   std::cerr << "\t-o dbgroup=<dbroot>\tDatabase group\n";
+   std::cerr << "\t-o dbumask=<dbroot>\tDatabase umask (octal)\n";
+   std::cerr << "\t--rebuilddb\t\tRebuild DB mode\n";
    std::cerr << std::endl;
 }
 
@@ -45,12 +57,16 @@ int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
       fuse_opt_add_arg(outargs,"-ho");
       ((Params*)data)->help=true;
       return 0;
+   }else if(key==KEY_REBUILDDB){
+      ((Params*)data)->rebuild=true;
+      return 0;
    }else
       return 1;
 }
 
 void* init_(fuse_conn_info* conn){
-   return new FS(((Params*)fuse_get_context()->private_data)->dbroot);
+   Params* p=(Params*)fuse_get_context()->private_data;
+   return new FS(p->dbroot);
 }
 
 void destroy_(void *userdata){
@@ -200,15 +216,52 @@ int main(int argc, char** argv){
      dbroot_default=std::string(getenv("HOME"))+"/.offlinefs/";
      params.dbroot=dbroot_default.c_str();
   }
+
+
   if(fuse_opt_parse(&args,&params,opts,opt_proc)){
      std::cerr << "Error parsing command line" << std::endl;
      return -1;
   }
+   if(params.dbgroup){
+      struct group* gr=getgrnam(params.dbgroup);
+      if(!gr){
+	 std::cerr << "Specified dbgroup doesn't exist.\n";
+	 return 1;
+      }
+      if(setegid(gr->gr_gid)){
+	 std::cerr << "Error calling setegid().\n";
+	 return 1;
+      }
+   }
+   if(params.dbumask){
+      std::istringstream is(params.dbumask);
+      is.setf(std::ios::oct);
+      mode_t dbumask;
+      is >> dbumask;
+      if(!is){
+	 std::cerr << "Error parsing dbumask.\n";
+	 return 1;
+      }
+      umask(dbumask);
+   }
 
-  if(!params.dbroot&&!params.help){
-     std::cerr << "No database root found!\n";
-     usage();
-     return -1;
+
+  if(!params.help){
+     if(!params.dbroot){
+	std::cerr << "No database root found!\n";
+	usage();
+	return -1;
+     }
+     if(params.dbroot[0]!='/'){
+	std::cerr << "Error: expecting absolute path for dbroot.\n";
+	return -1;
+     }
+     if(params.rebuild){
+	std::cerr << "Rebuilding database at " << params.dbroot << " ...\n";
+	FsDb(params.dbroot).rebuild();
+	std::cerr << "Done.\n";
+	return 0;
+     }
   }
 
   int err= fuse_main(args.argc, args.argv,&ops,&params);

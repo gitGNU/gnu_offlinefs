@@ -6,11 +6,12 @@ AC_INIT([offlinefs], [0.1], [currojerez@gmail.com])
 AM_INIT_AUTOMAKE
 AC_LANG(C++)
 
-AC_CONFIG_SRCDIR([fsnodes/symlink.hxx])
+AC_CONFIG_SRCDIR([src/libofflinefs/fsnodes/symlink.hxx])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
 AC_PROG_CXX
+AC_PROG_LIBTOOL
 
 # Checks for libraries.
 AC_CHECK_LIB([db_cxx],[main],,[AC_MSG_ERROR([Berkeley DB library (c++) not found.])])
@@ -21,6 +22,7 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([fcntl.h stddef.h stdlib.h sys/statvfs.h unistd.h])
 
 AC_CHECK_HEADER([asm/byteorder.h],,[AC_MSG_ERROR([<asm/byteorder.h> header not found!])])
+AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([<attr/xattr.h> header not found!])])
 
 AC_CHECK_HEADERS([db_cxx.h db4.5/db_cxx.h])
 if test "$ac_cv_header_db_cxx_h" = no && test "$ac_cv_header_db4_5_db_cxx_h" = no; then 
@@ -45,5 +47,5 @@ AC_FUNC_CHOWN
 AC_FUNC_STAT
 AC_CHECK_FUNCS([fdatasync memset mkdir uname])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile src/libofflinefs/Makefile src/offlinefs/Makefile src/tools/Makefile etc/Makefile ])
 AC_OUTPUT

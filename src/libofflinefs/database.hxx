@@ -138,7 +138,7 @@ std::list<T> Database<T>::listregisters(){
 }
 
 template<typename T>
-Database<T>::Database(Environment& env, std::string name):dbenv(env.dbenv),name(name){}
+Database<T>::Database(Environment& env, std::string name):dbenv(env.dbenv),name(name),db(NULL) {}
 
 template<typename T>
 Database<T>::~Database(){

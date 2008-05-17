@@ -1,8 +1,8 @@
 #ifndef FSNODES_NODE_HXX
 #define FSNODES_NODE_HXX
 
-#include "../common.hxx"
-#include "../fsdb.hxx"
+#include <common.hxx>
+#include <fsdb.hxx>
 
 class Node:public Database<uint64_t>::Register{
    protected:

@@ -1,2 +1,2 @@
 #!/bin/bash
-aclocal && autoheader && automake -a --foreign && autoconf
+libtoolize && aclocal && autoheader && automake -a --foreign && autoconf

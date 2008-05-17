@@ -18,8 +18,16 @@ std::auto_ptr<Medium> Medium::getmedium(FsDb& dbs, uint32_t id){
    string mediumtype(b.data,b.size);
    if(mediumtype=="directory")
       return std::auto_ptr<Medium>(new Medium_directory(dbs,id));
-   else if(mediumtype=="mount")
+   else if(mediumtype=="insert")
       return std::auto_ptr<Medium>(new Medium_insert(dbs,id));
+   throw ENotFound();
+}
+      
+std::auto_ptr<Medium> Medium::create(FsDb& dbs, std::string type){
+   if(type=="directory")
+      return auto_ptr<Medium>(Medium_directory::create(dbs));
+   else if(type=="insert")
+      return auto_ptr<Medium>(Medium_insert::create(dbs));
    throw ENotFound();
 }
       
@@ -57,12 +65,14 @@ std::string Medium_directory::realpath(File& f){
    return (basepath+"/"+filepath);   
 }
 
-std::auto_ptr<Medium_directory> Medium_directory::create(FsDb& dbs,string path){
+std::auto_ptr<Medium_directory> Medium_directory::create(FsDb& dbs){
    auto_ptr<Medium_directory> m(new Medium_directory(dbs,dbs.media.createregister()));
    string mediumtype("directory");
    m->setattrv("mediumtype",Buffer(mediumtype.c_str(),mediumtype.size()));
    m->setattr<uint32_t>("refcount",0);
-   m->setattrv("directory",Buffer(path.c_str(),path.size()));
+   m->setattrv("directory",Buffer(NULL,0));
+   string unlink_files("false");
+   m->setattrv("unlink_files",Buffer(unlink_files.c_str(),unlink_files.size()));
    return m;
 }
 
@@ -96,17 +106,20 @@ void Medium_directory::addfile(File& f,string phid){
 }
 
 void Medium_directory::delfile(File& f){
-   unlink(realpath(f).c_str());
+   Buffer b=getattrv("unlink_files");
+   if(string(b.data,b.size)=="true")
+      unlink(realpath(f).c_str());
    Medium::delfile(f);
 }
 
 
-std::auto_ptr<Medium_insert> Medium_insert::create(FsDb& dbs,string path,string label,string checkcmd){
-   auto_ptr<Medium_directory> r=Medium_directory::create(dbs,path);
-   string mediumtype("mount");
+std::auto_ptr<Medium_insert> Medium_insert::create(FsDb& dbs){
+   auto_ptr<Medium_directory> r=Medium_directory::create(dbs);
+   string mediumtype("insert");
    r->setattrv("mediumtype",Buffer(mediumtype.c_str(),mediumtype.size()));
-   r->setattrv("label",Buffer(label.c_str(),label.size()));
-   r->setattrv("checkcmd",Buffer(checkcmd.c_str(),checkcmd.size()));
+   r->setattrv("label",Buffer(NULL,0));
+   r->setattrv("checkcmd",Buffer(NULL,0));
+   r->setattrv("insertscript",Buffer(NULL,0));
    return auto_ptr<Medium_insert>(new Medium_insert(dbs,r->getid()));
 }
 

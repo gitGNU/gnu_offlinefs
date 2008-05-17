@@ -26,7 +26,8 @@ class Medium:public Database<uint32_t>::Register{
 
       static std::auto_ptr<Medium> defaultmedium(FsDb& dbs);
       static std::auto_ptr<Medium> getmedium(FsDb& dbs, uint32_t id);
-      
+      static std::auto_ptr<Medium> create(FsDb& dbs, std::string type);
+
       virtual void remove();
 
       virtual std::auto_ptr<Source> getsource(File& f,int mode)=0;
@@ -45,7 +46,7 @@ class Medium_directory:public Medium{
       std::string realpath(File& f);
    public:
       Medium_directory(FsDb& dbs,uint32_t id):Medium(dbs,id) {}
-      static std::auto_ptr<Medium_directory> create(FsDb& dbs,std::string path);
+      static std::auto_ptr<Medium_directory> create(FsDb& dbs);
       virtual std::auto_ptr<Source> getsource(File& f,int mode);
       virtual int truncate(File& f,off_t length);
       virtual Stats getstats();
@@ -59,7 +60,7 @@ class Medium_insert:public Medium_directory{
       void insert();
    public:
       Medium_insert(FsDb& dbs,uint32_t id):Medium_directory(dbs,id) {}
-      static std::auto_ptr<Medium_insert> create(FsDb& dbs,std::string path,std::string label,std::string checkcmd);
+      static std::auto_ptr<Medium_insert> create(FsDb& dbs);
       virtual std::auto_ptr<Source> getsource(File& f,int mode);
       virtual int truncate(File& f,off_t length);
       virtual Stats getstats();

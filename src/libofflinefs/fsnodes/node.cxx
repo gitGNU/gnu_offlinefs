@@ -2,8 +2,7 @@
 #include "file.hxx"
 #include "directory.hxx"
 #include "symlink.hxx"
-#include "../fs.hxx"
-#include "../util.hxx"
+#include <util.hxx>
 
 using std::auto_ptr;
 using std::string;

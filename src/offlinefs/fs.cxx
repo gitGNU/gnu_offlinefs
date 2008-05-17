@@ -8,6 +8,7 @@ using std::list;
 
 FS::FS(string dbroot):dbs(dbroot){
    memset(openFiles,0,sizeof(openFiles));
+   dbs.open();
    if(pthread_mutex_init(&openmutex,NULL))
       throw std::runtime_error("FS::FS: error initializing the mutex.");
 }
@@ -112,8 +113,6 @@ int FS::mknod(const char* path , mode_t mode, dev_t dev){
 
 int FS::mkdir(const char* path, mode_t mode){
    try{
-      if(string(path)=="/Software/Sistema/Drivers/SyncMaster151s/man/img/select/hun")
-	 std::cout << path <<std::endl;
       checkparentaccess(dbs,path,X_OK|W_OK);
       auto_ptr<Directory> n=Directory::create(dbs,string(path));
       n->setattr<time_t>("offlinefs.atime",time(NULL));
