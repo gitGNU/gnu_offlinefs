@@ -143,7 +143,9 @@ void Medium_insert::addfile(File& f,string phid){
 }
 
 void Medium_insert::delfile(File& f){
-   insert();
+   Buffer b=getattrv("unlink_files");
+   if(string(b.data,b.size)=="true")
+      insert();
    Medium_directory::delfile(f);
 }
 
