@@ -343,7 +343,7 @@ int FS::fsync(const char* path,int datasync, struct fuse_file_info* fi){
 int FS::setxattr(const char* path, const char* name, const char* value, size_t size, int flags){
    try{
       checkparentaccess(dbs,path,W_OK|X_OK);
-      if(fuse_get_context()->uid!=0 && fuse_get_context()->uid!=getuid() && string(path).find("offlinefs.")==0)
+      if(fuse_get_context()->uid!=0 && fuse_get_context()->uid!=getuid() && string(name).find("offlinefs.")==0)
 	 return -EACCES;
       auto_ptr<Node> n=Node::getnode(dbs,path);
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
@@ -405,6 +405,8 @@ int FS::listxattr(const char* path , char* list, size_t size){
 int FS::removexattr(const char* path, const char* name){
    try{
       checkparentaccess(dbs,path,W_OK|X_OK);
+      if(fuse_get_context()->uid!=0 && fuse_get_context()->uid!=getuid() && string(name).find("offlinefs.")==0)
+	 return -EACCES;
       auto_ptr<Node> n=Node::getnode(dbs,path);
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
       n->delattr(name);

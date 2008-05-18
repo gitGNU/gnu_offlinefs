@@ -30,7 +30,7 @@ int usage(std::string prog){
    cerr << "\t--add: Add medium of type <type> while setting specified attributes to the specified values.\n";
    cerr << "\t--list: List existing media.\n";
    cerr << "\t--rm: Remove specified medium.\n";
-   cerr << "\t--mod: Modify specified attributes on media <id>.\n";
+   cerr << "\t--mod: Modify specified attributes on medium <id>.\n";
    cerr << "\t--addfile: Create file <path> (relative to mount point) by cloning the metadata from [refpath], and add it to medium <id>.\n";
    cerr << "[dbroot] defaults to ~/.offlinefs/\n";
    return 1;

@@ -48,6 +48,5 @@ echo "Adding files to the database..."
 find $cdroot -type f -printf "%P\n"| while read file; do
     source="$cdroot/$file"
     offmedia --addfile "$mid" "$file" "$source" "$dbroot"
-    chmod a-w "$offroot/$file" &>/dev/null 
 done
 echo "Done"
