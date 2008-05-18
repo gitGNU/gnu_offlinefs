@@ -1,6 +1,6 @@
 #include "fsdb.hxx"
 #include "fsnodes.hxx"
-#include "medium.hxx"
+#include "media.hxx"
 
 using std::auto_ptr;
 

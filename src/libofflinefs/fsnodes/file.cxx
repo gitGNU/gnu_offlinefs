@@ -1,6 +1,6 @@
 #include "file.hxx"
 #include "directory.hxx"
-#include <medium.hxx>
+#include <media.hxx>
 
 using std::auto_ptr;
 using std::string;

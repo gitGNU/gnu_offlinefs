@@ -6,7 +6,7 @@
 #include <sstream>
 
 #include <fsdb.hxx>
-#include <medium.hxx>
+#include <media.hxx>
 #include <fsnodes.hxx>
 
 using std::pair;

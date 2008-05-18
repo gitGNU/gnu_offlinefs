@@ -1,11 +1,11 @@
 #ifndef FS_HXX
 #define FS_HXX
 
-#include "common.hxx"
-#include "fsdb.hxx"
-#include "fsnodes.hxx"
-#include "source.hxx"
-#include "medium.hxx"
+#include <common.hxx>
+#include <fsdb.hxx>
+#include <fsnodes.hxx>
+#include <sources.hxx>
+#include <media.hxx>
 #include <pthread.h>
 
 #define MAX_OPEN_FILES 512

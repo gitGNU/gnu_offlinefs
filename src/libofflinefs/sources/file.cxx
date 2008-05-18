@@ -1,10 +1,6 @@
-#include "source.hxx"
+#include "file.hxx"
 
 using std::string;
-
-Source::Source(File& f,int mode):f(f),size(0),mode(mode) {
-   size=f.getattr<off_t>("offlinefs.size");
-}
 
 Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1){
    if(mode&O_ACCMODE==O_RDONLY){
