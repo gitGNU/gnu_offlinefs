@@ -1,3 +1,5 @@
+#include <common.hxx>
+
 #include <iostream>
 #include <string>
 #include <list>
@@ -217,9 +219,12 @@ int main(int argc,char* argv[]){
       }else{
 	 return usage(argv[0]);
       }
+      return 0;
    }catch(std::ios::failure& e){
       cerr << "Error parsing commandline\n";
       return usage(argv[0]);
+   }catch(std::exception& e){
+      cerr << "offmedia: Exception: " << e.what() << endl;
+      return 1;
    }
-   return 0;
 }
