@@ -13,7 +13,7 @@ void Directory::addchild(std::string name, Node& n){
    try{
       try{
 	 rdir.getattrv(name);
-      }catch(...){
+      }catch(EAttrNotFound& e){
 	 rdir.setattr(name,n.getid());
 	 return;
       }
@@ -50,10 +50,11 @@ std::auto_ptr<Directory> Directory::create(FsDb& dbs){
    return n;
 }
 
-auto_ptr<Directory> Directory::create(FsDb& dbs,string path){
+auto_ptr<Directory> Directory::create(FsDb& dbs,const SContext& sctx,string path){
    auto_ptr<Directory> n=Directory::create(dbs);
    try{
-      Path p(dbs,path);
+      Path p(dbs,sctx,path);
+      p.parent->access(sctx,W_OK|X_OK);
       p.parent->addchild(p.leaf,*n);
       n->addchild("..",*p.parent);
    }catch(...){
@@ -63,7 +64,7 @@ auto_ptr<Directory> Directory::create(FsDb& dbs,string path){
    return n;
 }
 
-Directory::Path::Path(FsDb& dbs,string path){
+Directory::Path::Path(FsDb& dbs,const SContext& sctx, string path){
    std::string parentpath;
    string::size_type slashpos=0;
    string::size_type notslash=path.find_last_not_of("/");
@@ -72,5 +73,5 @@ Directory::Path::Path(FsDb& dbs,string path){
       leaf=path.substr(slashpos+1,notslash-slashpos);
       parentpath=path.substr(0,slashpos);
    }
-   parent=cast<Directory>(Node::getnode(dbs,parentpath));
+   parent=cast<Directory>(Node::getnode(dbs,sctx,parentpath));
 }

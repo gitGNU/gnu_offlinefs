@@ -26,6 +26,7 @@ template<typename T>
 Database<T>::Register::~Register(){}
 
 
+// Each berkeley DB key stores the concatenation of the ID and the attribute name
 template<typename T>
 Buffer Database<T>::Register::mkey(std::string name){
    Buffer b;

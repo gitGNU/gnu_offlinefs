@@ -4,6 +4,7 @@
 #include "common.hxx"
 #include <asm/byteorder.h>
 
+
 class Environment{
    public:
       Environment(std::string path);
@@ -13,6 +14,7 @@ class Environment{
 
 };
 
+// Object automating memory management
 class Buffer{
       void clean();
       void copy(const char* data, size_t size);
@@ -26,6 +28,11 @@ class Buffer{
       size_t size;
 };
 
+
+//
+// Class to abstract a table mapping an id of type T into a register
+// Each register maps an attribute name (a string) into an arbitrary data type
+//
 template<typename T>
 class Database{
       T incrId(T id);
@@ -57,22 +64,38 @@ class Database{
 	    Database<T>& getdb();
 	    virtual void remove();
 	    
+	    // Get the specified attribute, throw EAttrNotFound if it doesn't exist
 	    Buffer getattrv(std::string name);
+
+	    // Set the specified attribute
 	    void setattrv(std::string name,const Buffer& v);
 	    
+
+	    //Get the specified attribute (as a type S)
+	    //If the type's size doesn't match the stored one,
+	    //throw std::runtime_exception
 	    template<typename S> S getattr(std::string name);
+
+	    //Set the specified attribute
 	    template<typename S> void setattr(std::string name,S v);
+
+	    //Delete the attribute "name", throw EAttrNotFound if it
+	    // doesn't exist
 	    void delattr(std::string name);
+
 	    std::list<std::string> getattrs();    
       };
 
       Database(Environment& env,std::string name);
       void open();
       void close();
+      //Erase the contents of the database
       void rebuild();
       ~Database();
 
+      // Initialize a new register, and return its ID
       T createregister();
+
       std::list<T> listregisters();
 };
 
@@ -171,7 +194,6 @@ void Database<T>::rebuild(){
 template<typename T>
 T Database<T>::incrId(T id){
 //Dirty hack to allow using arbitrary T...
-   std::cerr << "!!!!!!" << std::endl;
    char* p=(char*)&id+sizeof(T);
    do{
       p--;

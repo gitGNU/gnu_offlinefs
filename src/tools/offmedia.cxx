@@ -81,7 +81,7 @@ int modm(uint32_t id,attrlist attrs, string dbroot){
 int addf(uint32_t id,string path,string refpath,string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
-   auto_ptr<File> f=File::create(dbs,"/"+path);
+   auto_ptr<File> f=File::create(dbs,SContext(getuid(),getgid()),"/"+path);
    auto_ptr<Medium> m=Medium::getmedium(dbs,id);
    Buffer b=m->getattrv("directory");
    string basedir(b.data,b.size);
@@ -113,6 +113,7 @@ int main(int argc,char* argv[]){
    try{
       if(argc<2)
 	 return usage(argv[0]);
+
       if(string(argv[1])=="--add"){
 	 if(argc<3){
 	    cerr << "Too few arguments" << endl;
@@ -140,6 +141,8 @@ int main(int argc,char* argv[]){
 	 }
 	    
 	 return addm(type,attrs,dbroot);
+
+
       }else if(string(argv[1])=="--list"){
 	 if(argc==3)
 	    dbroot=string(argv[argc-1]);
@@ -152,7 +155,10 @@ int main(int argc,char* argv[]){
 	    cerr << "Wrong number of arguments" << endl;
 	    return usage(argv[0]);
 	 }
+
 	 return listm(dbroot);
+
+
       }else if(string(argv[1])=="--rm"){
 	 if(argc==4){
 	    dbroot=string(argv[argc-1]);
@@ -169,7 +175,10 @@ int main(int argc,char* argv[]){
 	 is.exceptions(std::ios::failbit);
 	 uint32_t id;
 	 is >> id;
+
 	 return rmm(id,dbroot);
+
+
       }else if(string(argv[1])=="--mod"){
 	 if(argc<3){
 	    cerr << "Too few arguments" << endl;
@@ -200,6 +209,8 @@ int main(int argc,char* argv[]){
 	 }
 	    
 	 return modm(id,attrs,dbroot);
+
+
       }else if(string(argv[1])=="--addfile"){
  	 if(argc<4||argc>6){
 	    cerr << "Wrong number of arguments" << endl;
@@ -215,11 +226,15 @@ int main(int argc,char* argv[]){
 	    refpath=string(argv[4]);
 	 if(argc>5)
 	    dbroot=string(argv[5]);
+
 	 return addf(id,path,refpath,dbroot);
+
+
       }else{
 	 return usage(argv[0]);
       }
       return 0;
+
    }catch(std::ios::failure& e){
       cerr << "Error parsing commandline\n";
       return usage(argv[0]);

@@ -1,10 +1,15 @@
 #include "fs.hxx"
-#include "util.hxx"
+
+#define MIN(a,b) (a<b?a:b)
 
 using std::auto_ptr;
 using std::string;
 using std::exception;
 using std::list;
+
+inline SContext userctx(){
+   return SContext(fuse_get_context()->uid,fuse_get_context()->gid);
+}
 
 FS::FS(string dbroot):dbs(dbroot){
    memset(openFiles,0,sizeof(openFiles));
@@ -22,6 +27,7 @@ FS::~FS(){
    pthread_mutex_destroy(&openmutex);
 }
 
+// Translate an exception into an error code
 int errcode(exception& e){
    if(typeid(e)==typeid(Node::ENotFound))
       return -ENOENT;
@@ -46,8 +52,8 @@ int errcode(exception& e){
 int FS::getattr(const char* path, struct stat* st){
    memset(st, 0, sizeof(struct stat));
    try{
-      checkparentaccess(dbs,path,X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,string(path));
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,string(path));
       st->st_ino=(ino_t)n->getid();
       st->st_dev=n->getattr<dev_t>("offlinefs.dev");
       st->st_nlink=n->getattr<nlink_t>("offlinefs.nlink");
@@ -67,8 +73,9 @@ int FS::getattr(const char* path, struct stat* st){
 
 int FS::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info* fi){ 
    try{
-      checkaccess(dbs,path,X_OK|R_OK);
-      auto_ptr<Directory> n=Node::cast<Directory>(Node::getnode(dbs,string(path)));
+      SContext sctx=userctx();
+      auto_ptr<Directory> n=Node::cast<Directory>(Node::getnode(dbs,sctx,string(path)));
+      n->access(sctx,R_OK|X_OK);
       n->setattr<time_t>("offlinefs.atime",time(NULL));
       list<string> l=n->getchildren();
       for(list<string>::iterator it=l.begin();it!=l.end();it++)
@@ -81,8 +88,8 @@ int FS::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offse
 
 int FS::readlink(const char* path, char* buf, size_t bufsiz){
    try{
-      checkaccess(dbs,path,0);
-      auto_ptr<Symlink> n=Node::cast<Symlink>(Node::getnode(dbs,string(path)));
+      SContext sctx=userctx();
+      auto_ptr<Symlink> n=Node::cast<Symlink>(Node::getnode(dbs,sctx,string(path)));
       Buffer target=n->getattrv("offlinefs.symlink");
       memcpy(buf,target.data,MIN(bufsiz,target.size));
       if(target.size<bufsiz)
@@ -95,8 +102,8 @@ int FS::readlink(const char* path, char* buf, size_t bufsiz){
 
 int FS::mknod(const char* path , mode_t mode, dev_t dev){
    try{
-      checkparentaccess(dbs,path,X_OK|W_OK);
-      auto_ptr<Node> n=Node::create(dbs,string(path));
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::create(dbs,sctx,string(path));
       n->setattr<time_t>("offlinefs.atime",time(NULL));
       n->setattr<time_t>("offlinefs.mtime",time(NULL));
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
@@ -113,8 +120,8 @@ int FS::mknod(const char* path , mode_t mode, dev_t dev){
 
 int FS::mkdir(const char* path, mode_t mode){
    try{
-      checkparentaccess(dbs,path,X_OK|W_OK);
-      auto_ptr<Directory> n=Directory::create(dbs,string(path));
+      SContext sctx=userctx();
+      auto_ptr<Directory> n=Directory::create(dbs,sctx,string(path));
       n->setattr<time_t>("offlinefs.atime",time(NULL));
       n->setattr<time_t>("offlinefs.mtime",time(NULL));
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
@@ -129,10 +136,10 @@ int FS::mkdir(const char* path, mode_t mode){
 
 int FS::unlink(const char* path){
    try{
-      checkparentaccess(dbs,path,X_OK|W_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,string(path));
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
-      Directory::Path p(dbs,path);
+      SContext sctx=userctx();
+      Directory::Path p(dbs,sctx,path);
+      p.parent->access(sctx,W_OK|X_OK);
+      p.parent->getchild(p.leaf)->setattr<time_t>("offlinefs.ctime",time(NULL));
       p.parent->delchild(p.leaf);
    }catch(exception& e){
       return errcode(e);
@@ -142,8 +149,9 @@ int FS::unlink(const char* path){
 
 int FS::rmdir(const char* path){
    try{
-      checkparentaccess(dbs,path,X_OK|W_OK);
-      Directory::Path p(dbs,path);
+      SContext sctx=userctx();
+      Directory::Path p(dbs,sctx,path);
+      p.parent->access(sctx,X_OK|W_OK);
       auto_ptr<Directory> n=Node::cast<Directory>(p.parent->getchild(p.leaf));
       if(n->getchildren().size()>2)
 	 return -ENOTEMPTY;
@@ -156,8 +164,8 @@ int FS::rmdir(const char* path){
 
 int FS::symlink(const char* oldpath, const char* newpath){
    try{
-      checkparentaccess(dbs,newpath,X_OK|W_OK);
-      auto_ptr<Symlink> sl=Symlink::create(dbs,newpath);
+      SContext sctx=userctx();
+      auto_ptr<Symlink> sl=Symlink::create(dbs,sctx,newpath);
       sl->setattr<time_t>("offlinefs.atime",time(NULL));
       sl->setattr<time_t>("offlinefs.mtime",time(NULL));
       sl->setattr<time_t>("offlinefs.ctime",time(NULL));
@@ -181,10 +189,10 @@ int FS::rename(const char* oldpath, const char* newpath){
 
 int FS::link(const char* oldpath, const char* newpath){
    try{
-      checkparentaccess(dbs,oldpath,R_OK|X_OK);
-      checkparentaccess(dbs,newpath,W_OK|X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,oldpath);
-      Directory::Path p(dbs,newpath);
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,oldpath);
+      Directory::Path p(dbs,sctx,newpath);
+      p.parent->access(sctx,W_OK);
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
       p.parent->addchild(p.leaf,*n);
    }catch(exception& e){
@@ -195,14 +203,14 @@ int FS::link(const char* oldpath, const char* newpath){
 
 int FS::chmod(const char* path, mode_t mode){
    try{
-      checkparentaccess(dbs,path,W_OK|X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
       if(fuse_get_context()->uid!=0){
 	 gid_t fgid=n->getattr<gid_t>("offlinefs.gid");
 	 uid_t fuid=n->getattr<uid_t>("offlinefs.uid");
-	 if(fuse_get_context()->uid!=fuid)
-	    return -EACCES;
-	 if(fuse_get_context()->gid!=fgid && !ingroup(fuse_get_context()->uid,fgid))
+	 if(sctx.uid!=fuid)
+	    return -EPERM;
+	 if(!sctx.groups.count(fgid))
 	    mode&=~S_ISGID;
       }
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
@@ -215,20 +223,19 @@ int FS::chmod(const char* path, mode_t mode){
 
 int FS::chown(const char* path, uid_t owner, gid_t group){
    try{
-      checkparentaccess(dbs,path,W_OK|X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
       if(owner!=(uid_t)-1 && owner!=n->getattr<uid_t>("offlinefs.uid")){
-	 if(fuse_get_context()->uid!=0)
+	 if(sctx.uid!=0)
 	    return -EACCES;
 	 n->setattr<uid_t>("offlinefs.uid",owner);
       }
-      if(group!=(gid_t)-1)
-	 if(fuse_get_context()->uid!=0){
-	    if(getgid() != group && !ingroup(getuid(),group))
+      if(group!=(gid_t)-1 && group!=n->getattr<gid_t>("offlinefs.gid")){
+	 if(sctx.uid!=0){
+	    if(!sctx.groups.count(group))
 	       return -EACCES;
 	    else{
-	       //Clear setgid bit
+	       //Clear setuid/setgid bit
 	       mode_t m=n->getattr<mode_t>("offlinefs.mode")&(~S_ISUID);
 	       if(m&S_IXGRP)
 		  m&=~S_ISGID;
@@ -236,6 +243,8 @@ int FS::chown(const char* path, uid_t owner, gid_t group){
 	    }
 	 }
 	 n->setattr<gid_t>("offlinefs.gid",group);
+      }
+      n->setattr<time_t>("offlinefs.ctime",time(NULL));
    }catch(exception& e){
       return errcode(e);
    }
@@ -244,8 +253,9 @@ int FS::chown(const char* path, uid_t owner, gid_t group){
 
 int FS::truncate(const char* path, off_t length){
    try{
-      checkaccess(dbs,path,W_OK);
-      auto_ptr<File> n=Node::cast<File>(Node::getnode(dbs,path));
+      SContext sctx=userctx();
+      auto_ptr<File> n=Node::cast<File>(Node::getnode(dbs,sctx,path));
+      n->access(sctx,W_OK);
       n->setattr<time_t>("offlinefs.mtime",time(NULL));
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
       return n->getmedium(path)->truncate(*n,length);
@@ -257,11 +267,12 @@ int FS::truncate(const char* path, off_t length){
 
 int FS::open(const char* path, struct fuse_file_info* fi){
    try{
+      SContext sctx=userctx();
+      auto_ptr<File> n=Node::cast<File>(Node::getnode(dbs,sctx,path));
       if((fi->flags&O_ACCMODE)==O_RDONLY||(fi->flags&O_ACCMODE)==O_RDWR)
-	 checkaccess(dbs,path,R_OK);
+	 n->access(sctx,R_OK);
       if((fi->flags&O_ACCMODE)==O_WRONLY||(fi->flags&O_ACCMODE)==O_RDWR)
-	 checkaccess(dbs,path,W_OK);
-      auto_ptr<File> n=Node::cast<File>(Node::getnode(dbs,path));
+	 n->access(sctx,W_OK);
       auto_ptr<Source> s=n->getmedium(path)->getsource(*n,fi->flags);
 
       for(int i=0;i<MAX_OPEN_FILES;i++)
@@ -342,10 +353,10 @@ int FS::fsync(const char* path,int datasync, struct fuse_file_info* fi){
 
 int FS::setxattr(const char* path, const char* name, const char* value, size_t size, int flags){
    try{
-      checkparentaccess(dbs,path,W_OK|X_OK);
-      if(fuse_get_context()->uid!=0 && fuse_get_context()->uid!=getuid() && string(name).find("offlinefs.")==0)
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
+      if(sctx.uid!=0 && sctx.uid!=getuid() && (string(name).find("offlinefs.")==0 || sctx.uid!=n->getattr<uid_t>("offlinefs.uid")) )
 	 return -EACCES;
-      auto_ptr<Node> n=Node::getnode(dbs,path);
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
       if(flags){
 	 if(flags==XATTR_CREATE){
@@ -370,8 +381,8 @@ int FS::setxattr(const char* path, const char* name, const char* value, size_t s
 
 int FS::getxattr(const char* path, const char* name, char* value, size_t size){
    try{
-      checkparentaccess(dbs,path,R_OK|X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
       Buffer b=n->getattrv(name);
       memcpy(value,b.data,MIN(size,b.size));
       return b.size;
@@ -384,8 +395,8 @@ int FS::getxattr(const char* path, const char* name, char* value, size_t size){
 
 int FS::listxattr(const char* path , char* list, size_t size){
    try{
-      checkparentaccess(dbs,path,R_OK|X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
       std::list<string> l=n->getattrs();
       size_t count=0;
       for(std::list<string>::iterator it=l.begin();it!=l.end();it++){
@@ -404,10 +415,10 @@ int FS::listxattr(const char* path , char* list, size_t size){
 
 int FS::removexattr(const char* path, const char* name){
    try{
-      checkparentaccess(dbs,path,W_OK|X_OK);
-      if(fuse_get_context()->uid!=0 && fuse_get_context()->uid!=getuid() && string(name).find("offlinefs.")==0)
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
+      if(sctx.uid!=0 && sctx.uid!=getuid() && (string(name).find("offlinefs.")==0 || sctx.uid!=n->getattr<uid_t>("offlinefs.uid")) )
 	 return -EACCES;
-      auto_ptr<Node> n=Node::getnode(dbs,path);
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
       n->delattr(name);
    }catch(Node::EAttrNotFound& e){
@@ -420,10 +431,18 @@ int FS::removexattr(const char* path, const char* name){
 
 int FS::utimens(const char* path, const struct timespec tv[2]){
    try{
-      checkparentaccess(dbs,path,W_OK|X_OK);
-      auto_ptr<Node> n=Node::getnode(dbs,path);
-      n->setattr<time_t>("offlinefs.atime",tv[0].tv_sec);
-      n->setattr<time_t>("offlinefs.mtime",tv[1].tv_sec);
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
+      if(tv){
+	 if(sctx.uid!=0 && sctx.uid!=getuid() && sctx.uid!=n->getattr<uid_t>("offlinefs.uid"))
+	    return -EACCES;
+	 n->setattr<time_t>("offlinefs.atime",tv[0].tv_sec);
+	 n->setattr<time_t>("offlinefs.mtime",tv[1].tv_sec);
+      }else{
+	 n->access(sctx,W_OK);
+	 n->setattr<time_t>("offlinefs.atime",time(NULL));
+	 n->setattr<time_t>("offlinefs.mtime",time(NULL));	 
+      }
    }catch(exception& e){
       return errcode(e);
    }
@@ -432,7 +451,9 @@ int FS::utimens(const char* path, const struct timespec tv[2]){
 
 int FS::access(const char* path, int mode){
    try{
-      checkaccess(dbs,path,mode);
+      SContext sctx=userctx();
+      auto_ptr<Node> n=Node::getnode(dbs,sctx,path);
+      n->access(sctx,mode);
    }catch(Node::ENotFound& e){
       return -EACCES;
    }catch(exception& e){

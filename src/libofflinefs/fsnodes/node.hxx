@@ -3,10 +3,11 @@
 
 #include <common.hxx>
 #include <fsdb.hxx>
+#include <scontext.hxx>
 
 class Node:public Database<uint64_t>::Register{
    protected:
-      template <typename T> static std::auto_ptr<T> create_(FsDb& dbs, std::string path);
+      template <typename T> static std::auto_ptr<T> create_(FsDb& dbs,const SContext& sctx, std::string path);
    public:
       template<typename T>
       class EBadCast:public std::runtime_error{
@@ -26,11 +27,19 @@ class Node:public Database<uint64_t>::Register{
       Node(FsDb& dbs,uint64_t id);
       virtual ~Node();
 
+      //Initialize a "neutral" node (with its mode attribute = 0)
       static std::auto_ptr<Node> create(FsDb& dbs);
-      static std::auto_ptr<Node> create(FsDb& dbs, std::string path);
+      //The same as the previous one, but also link it to the specified path.
+      // It throws EBadCast<Directory> if one of the intermediate path elements
+      // isn't a directory, ENotFound if one of them doesn't exist, EAccess if the
+      // caller doesn't have enough permissions.
+      static std::auto_ptr<Node> create(FsDb& dbs, const SContext& sctx, std::string path); 
 
+      // Instance a Node derived object, depending on the type stored in the database
+      // It throws ENotFound if the node doesn't exist
       static std::auto_ptr<Node> getnode(FsDb& dbs, uint64_t id);
-      static std::auto_ptr<Node> getnode(FsDb& dbs, std::string path);
+      // The same as before. It can also throw EBadCast<Directory> and EAccess
+      static std::auto_ptr<Node> getnode(FsDb& dbs, const SContext& sctx, std::string path);
 
       template<typename T>
       static std::auto_ptr<T> cast(std::auto_ptr<Node> n){
@@ -39,10 +48,14 @@ class Node:public Database<uint64_t>::Register{
 	 return std::auto_ptr<T>((T*)n.release());
       }
 
+      // Increment link count
       void link();
+      // Decrement link count and remove it if it has reached zero
       void unlink();
 
-      void access(uid_t uid,gid_t gid,int mode);
+      // Throw EAccess if the node doesn't have all the specified permissions
+      // for the caller
+      void access(const SContext& sctx, int mode);
 };
 
 #endif

@@ -28,6 +28,8 @@ void FsDb::rebuild(){
    nodes.rebuild();
    directories.rebuild();
    media.rebuild();
+
+   // Initialize the root directory (it will get 0 as id)
    auto_ptr<Directory> root=Directory::create(*this);
    root->setattr<mode_t>("offlinefs.mode",S_IFDIR|0755);
    root->setattr<uid_t>("offlinefs.uid",getuid());

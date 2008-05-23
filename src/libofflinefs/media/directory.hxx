@@ -3,6 +3,13 @@
 
 #include "medium.hxx"
 
+// This medium stores the associated files inside a directory,
+// somewhere else in the filesystem.
+// It takes into account the following medium attributes:
+//      directory: used when trying to access a file: the real path is constructed
+//                 by concatenating directory+"/"+phid
+//      unlink_files: if it's equal to "true", the real backend files will
+//                 be removed when not needed.
 class Medium_directory:public Medium{
       std::string realpath(File& f);
    public:

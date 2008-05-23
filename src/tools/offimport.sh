@@ -1,9 +1,10 @@
 #!/bin/bash
-#
+# Import a 
 
 
 usage(){
     echo "usage: offimport.sh -i <cdroot> -l <label> [-s <insert script>] [-o <offroot>] [-d <dbroot>]"
+    echo "Import a directory tree (<cdroot>) into the offlinefs mounted at <offroot> and with database at <dbroot>. <insert script> will get called when trying to access any of the imported files."
     exit 1
 }
 

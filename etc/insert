@@ -1,4 +1,6 @@
 #!/bin/sh
+# Uncomment the following line if you want the kdialog and mount commands to be ran
+# as some other user
 #set_user="curro"
 
 export DISPLAY=:0.0

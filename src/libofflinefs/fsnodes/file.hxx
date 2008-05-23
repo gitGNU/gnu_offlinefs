@@ -10,7 +10,7 @@ class File:public Node{
       File(FsDb& dbs,uint64_t id):Node(dbs,id) {}
 
       static std::auto_ptr<File> create(FsDb& dbs);
-      static std::auto_ptr<File> create(FsDb& dbs,std::string path);
+      static std::auto_ptr<File> create(FsDb& dbs,const SContext& sctx,std::string path);
 
       virtual void remove();
 

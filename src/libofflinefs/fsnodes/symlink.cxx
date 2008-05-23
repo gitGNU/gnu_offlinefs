@@ -15,6 +15,6 @@ auto_ptr<Symlink> Symlink::create(FsDb& dbs){
    return n;
 }
 
-std::auto_ptr<Symlink> Symlink::create(FsDb& dbs,std::string path){
-   return Node::create_<Symlink>(dbs,path);
+std::auto_ptr<Symlink> Symlink::create(FsDb& dbs,const SContext& sctx,std::string path){
+   return Node::create_<Symlink>(dbs,sctx,path);
 }

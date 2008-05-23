@@ -11,8 +11,8 @@ auto_ptr<File> File::create(FsDb& dbs){
    return n;
 }
 
-std::auto_ptr<File> File::create(FsDb& dbs,std::string path){
-   return Node::create_<File>(dbs,path);
+std::auto_ptr<File> File::create(FsDb& dbs,const SContext& sctx,std::string path){
+   return Node::create_<File>(dbs,sctx,path);
 }
 
 void File::remove(){

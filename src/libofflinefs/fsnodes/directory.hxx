@@ -15,29 +15,37 @@ class Directory:public Node{
       Directory(FsDb& dbs,uint64_t id);
       virtual ~Directory() {}
 
+      // Link n at the specified name, it throws EExists if there is already a child
+      // with the same name
       void addchild(std::string name, Node& n);
-      void delchild(std::string name);
-      std::auto_ptr<Node> getchild(std::string name);
+      void delchild(std::string name); // It throws ENotFound if the file doesn't exist
+      std::auto_ptr<Node> getchild(std::string name); // It can throw ENotFound
       std::list<std::string> getchildren() { return rdir.getattrs(); }
 
       virtual void remove();
 
+      //Initialize an empty directory
       static std::auto_ptr<Directory> create(FsDb& dbs);
-      static std::auto_ptr<Directory> create(FsDb& dbs, std::string path);
+      //Initialize an empty directory an link it at path, it can throw EAccess, ENotFound and EBadCast<Directory>
+      static std::auto_ptr<Directory> create(FsDb& dbs,const SContext& sctx, std::string path);
 
       class Path{
 	 public:
-	    Path(FsDb& dbs,std::string path);
+	    //Parse the path, copy the leaf name (the last token of the path) to leaf,
+	    // even if it doesn't exist, and instance a Directory object representing
+	    // leaf's parent
+	    Path(FsDb& dbs,const SContext& sctx, std::string path);
 	    std::auto_ptr<Directory> parent;
 	    std::string leaf;
       };
 };
 
 template <typename T> 
-std::auto_ptr<T> Node::create_(FsDb& dbs, std::string path){
+std::auto_ptr<T> Node::create_(FsDb& dbs,const SContext& sctx, std::string path){
    std::auto_ptr<T> n=T::create(dbs);
    try{
-      Directory::Path p(dbs,path);
+      Directory::Path p(dbs,sctx,path);
+      p.parent->access(sctx,W_OK|X_OK);
       p.parent->addchild(p.leaf,*n);
    }catch(...){
       n->remove();
