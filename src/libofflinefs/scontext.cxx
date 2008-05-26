@@ -3,7 +3,7 @@
 #include <pwd.h>
 
 SContext::SContext(uid_t uid, gid_t gid):uid(uid), gid(gid){
-   int ngroups;
+   int ngroups=0;
    struct passwd* pw=getpwuid(uid);
    if(!pw)
       throw std::runtime_error("SContext::SContext: getpwuid failed.");
