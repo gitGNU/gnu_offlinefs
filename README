@@ -5,7 +5,7 @@ It was initially intended to join a large collection of ejectable media (like CD
 
 INSTALLATION
 To build it, you need the following dependencies:
- - Berkeley DB (runtime and headers for C++, it's likely to have a name like libdb4.X++-dev in your distribution... version 4.6 and 4.5 have been tested. It's not known if other versions could work)
+ - Berkeley DB (runtime and headers for C++, it's likely to have a name like libdb4.X++-dev in your distribution... version 4.6 and 4.5 have been tested. It's not known if other versions work)
  - FUSE (runtime and headers)
  - Extended attributes library (It's likely to be called attr-dev, libattr-dev or something similar)
  - Standard compilation tools and libraries (g++, make, etc)
@@ -29,8 +29,7 @@ $ offlinefs [ -o dbroot=<...> ] <mount point>
 
 If you are going to mount it as root and you expect some unprivileged user to be able to write in the database, it's possible that you will need to specify other options like "-o dbgroup" and "-o dbumask" at the command line.
 
-You can get it automatically mounted at system startup by adding a line like this in your /etc/fstab:
-
+You can get it automatically mounted at system startup by adding a line like this in /etc/fstab:
 offlinefs      <mount point> 	     fuse      	       <mount options>	     0 0
 
 You can specify any option you would prefix with "-o " in the command line.
@@ -53,10 +52,10 @@ MEDIUM TYPES
 The only currently implemented medium types are:
 * directory
  The data is stored somewhere else in the filesystem, at the directory specified by the "directory" medium attribute.
- It is useful if you want a permanent backend to make the filesystem writable (currently, the medium 0 is looked up when trying to create a new file: this is a bug, you have to  create the default medium before any other to get this working).
+ It is useful if you want a permanent backend to make the filesystem writable (currently, the medium 0 is looked up when trying to create a new file: this is a bug, you have to create the default medium before any other to get this working).
  You can use a command like this to create a directory medium:
 $ offmedia --add directory --directory <directory> --unlink_files true 
- The "unlink_files" attribute is used to allow it deleting the underlying files (this doesn't make sense in a static medium like a CD).
+ The "unlink_files" attribute is used to allow it deleting the underlying files when not≈needed (this doesn't make sense in a static medium like a CD).
   
 * insert
  Similar to directory, but before any filesystem operation the presence of the volume will be checked with an user-specified command ("checkcmd" attribute) and in case it isn't present, an user-specified script will be run ("insertscript" attribute) with the "label" attribute and the directory where it shall be mounted as parameters.
