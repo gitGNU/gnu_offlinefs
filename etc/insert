@@ -1,7 +1,9 @@
 #!/bin/sh
+# Sample offlinefs insert script
+
 # Uncomment the following line if you want the kdialog and mount commands to be ran
 # as a different user
-#set_user="curro"
+#set_user="user"
 
 export DISPLAY=:0.0
 [ -n "$set_user" ] && export XAUTHORITY=/home/$set_user/.Xauthority 
