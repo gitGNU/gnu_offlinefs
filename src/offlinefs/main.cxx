@@ -55,7 +55,7 @@ void usage(){
    std::cerr << "\n";
    std::cerr << "offlinefs options:\n";
    std::cerr << "\t-h\t--help\t\tprint help\n";
-   std::cerr << "\t-V\t--version\tprint version\n";
+   std::cerr << "\t-V\t--version\tprint version and license information\n";
    std::cerr << "\t-o dbroot=<dbroot>\tDatabase root\n";
    std::cerr << "\t-o dbgroup=<dbroot>\tDatabase group\n";
    std::cerr << "\t-o dbumask=<dbroot>\tDatabase umask (octal)\n";
@@ -63,9 +63,28 @@ void usage(){
    std::cerr << std::endl;
 }
 
+void version(){
+   std::cerr << "offlinefs version: " << VERSION << "\n"\
+      "Copyright (C) 2008 Francisco Jerez\n"				\
+      "This program is free software: you can redistribute it and/or modify\n" \
+      "it under the terms of the GNU General Public License as published by\n" \
+      "the Free Software Foundation, either version 3 of the License, or\n" \
+      "(at your option) any later version.\n"				\
+      "\n"								\
+      "This program is distributed in the hope that it will be useful,\n" \
+      "but WITHOUT ANY WARRANTY; without even the implied warranty of\n" \
+      "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"	\
+      "GNU General Public License for more details.\n"			\
+      "\n"								\
+      "You should have received a copy of the GNU General Public License\n" \
+      "along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.\n";
+   std::cerr << std::endl;
+      
+}
+
 int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
    if(key==KEY_VERSION){
-      std::cerr << "offlinefs version: " << VERSION << std::endl;
+      version();      
       ((Params*)data)->help=true;
       return 1;
    }else if(key==KEY_HELP){
