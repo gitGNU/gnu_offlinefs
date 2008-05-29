@@ -1,14 +1,43 @@
 
-offlinefs is a fuse-based filesystem where each file's contents are provided by an arbitrary handler (implementing the interface at src/libofflinefs/media/medium.hxx).
+INTRODUCTION
+
+offlinefs is a fuse-based filesystem initially intended to join a large collection of ejectable media (like CDs and DVDs) in a single writable filesystem where the files could still be searched, moved around, reorganized in directories, etc.
+If an user tries to open a file, he's asked to insert the volume where that file's contents are stored. The data is then transparently read from the real medium.
+
+If you've got any problem, questions... contact me at <currojerez@gmail.com>.
+
+
+INTERNALS
+
+Each file's contents are provided by an arbitrary handler (an object implementing the interface at src/libofflinefs/media/medium.hxx), so it isn't limited to the use described above.
 When the user tries to access a file, one of the handlers is called depending on the file's extended attributes (offlinefs.medium): the specified medium ID is looked up in the media database and one of the compiled-in handlers is selected.
-It was initially intended to join a large collection of ejectable media (like CDs and DVDs) in a single writable filesystem where the files could still be searched, reorganized in directories, etc.
+
+
+LICENSE
+
+Copyright (C) 2008 Francisco Jerez
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You can find the full GNU General Public License in the file "COPYING".
+
 
 INSTALLATION
+
 To build it, you need the following dependencies:
  - Berkeley DB (runtime and headers for C++, it's likely to have a name like libdb4.X++-dev in your distribution... version 4.6 and 4.5 have been tested. It's not known if other versions work)
  - FUSE (runtime and headers)
  - Extended attributes library (It's likely to be called attr-dev, libattr-dev or something similar)
  - Standard compilation tools and libraries (g++, make, etc)
+ - kdialog (It's used to show messages in an X display: you could use any similar program by editing the corresponding line in the insertion script)
 
 Then you would just run the following commands at this directory:
 $ ./configure
@@ -19,7 +48,9 @@ And as root:
 If you installed it at the default prefix (/usr/local) and you didn't had /usr/local/lib in your library path, you'll have to edit /etc/ld.so.conf to add it, and then run:
 # ldconfig
 
+
 USAGE
+
 Before using it you'll have to initialize a database directory: it could be anywhere (by default it's assumed to be at $HOME/.offlinefs/), create it somewhere with enough permissions to allow r/w access to the users that will be using it.
 You can initialize it with:
 $ offlinefs --rebuilddb [ -o dbroot=<path to database directory> ]
@@ -36,7 +67,9 @@ You can specify any option you would prefix with "-o " in the command line.
 
 Some useful options are "-d" (debug mode) and "-o allow_other" (specially when run as root: otherwise it would be the only user allowed to access the filesystem).
 
+
 MEDIA MANAGEMENT
+
 You can modify the media database with the "offmedia" command. It's kind of a low-level tool, and you will rarely have to use it: generally, you would import a whole filesystem tree with the "offimport.sh" script: It creates a new entry in the media database (an "insert" type medium). Then it recursively scans the specified directory adding each file and each directory to the filesystem and associating them with the newly created medium.
 
 You could use it like this:
@@ -46,17 +79,19 @@ When trying to access a file, you will be asked to insert the volume with label 
 (Depending on the user having mounted the filesystem and the X display you want to be asked in, you would have to modify the insertion script at /usr/local/etc/offlinefs/insert)
 
 To get a dump of the media DB, you can use the command:
-$ offmedia --list <db root>
+$ offmedia --list [db root]
+
 
 MEDIUM TYPES
+
 The only currently implemented medium types are:
 * directory
  The data is stored somewhere else in the filesystem, at the directory specified by the "directory" medium attribute.
  It is useful if you want a permanent backend to make the filesystem writable (currently, the medium 0 is looked up when trying to create a new file: this is a bug, you have to create the default medium before any other to get this working).
  You can use a command like this to create a directory medium:
 $ offmedia --add directory --directory <directory> --unlink_files true 
- The "unlink_files" attribute is used to allow it deleting the underlying files when not≈needed (this doesn't make sense in a static medium like a CD).
+ The "unlink_files" attribute is used to allow it deleting the underlying files when not needed (this doesn't make sense in a static medium like a CD).
   
 * insert
- Similar to directory, but before any filesystem operation the presence of the volume will be checked with an user-specified command ("checkcmd" attribute) and in case it isn't present, an user-specified script will be run ("insertscript" attribute) with the "label" attribute and the directory where it shall be mounted as parameters.
+ Similar to directory, but before any filesystem operation, the presence of the volume will be checked with an user-specified command ("checkcmd" attribute) and in case it isn't present, an user-specified script will be run ("insertscript" attribute) with the "label" attribute and the directory where it shall be mounted as parameters.
 

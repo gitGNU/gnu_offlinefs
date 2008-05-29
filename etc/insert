@@ -1,17 +1,17 @@
 #!/bin/sh
-# Sample offlinefs insert script
+# Sample offlinefs insertion script
 
-# Uncomment the following line if you want the kdialog and mount commands to be ran
+# Uncomment the following line if you want the kdialog and mount commands to be run
 # as a different user
-#set_user="user"
+#set_user="username"
 
 export DISPLAY=:0.0
 [ -n "$set_user" ] && export XAUTHORITY=/home/$set_user/.Xauthority 
 
-KDIALOG="/usr/kde/3.5/bin/kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
+DIALOG="/usr/kde/3.5/bin/kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
 MOUNT="mount $2"
 if [ -n "$set_user" ]; then 
-    su -c "$KDIALOG && $MOUNT" $set_user
+    su -c "$DIALOG && $MOUNT" $set_user
 else
-    sh -c "$KDIALOG && $MOUNT"
+    sh -c "$DIALOG && $MOUNT"
 fi
