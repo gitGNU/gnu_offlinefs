@@ -34,7 +34,7 @@ done
 [ $((OPTIND-1)) != $# ] && usage
 
 [ -z $dbroot ] && dbroot="$HOME/.offlinefs" 
-[ -z $offroot ] && offroot=`mount |grep offlinefs |cut -d' ' -f3`
+[ -z $offroot ] && offroot=`mount |grep offlinefs |cut -d' ' -f3 |head -n 1` 
 [ -z $insert ] && insert="/usr/local/etc/offlinefs/insert"
 [ -z $label ] && usage
 [ -z $cdroot ] && usage

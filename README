@@ -67,6 +67,8 @@ You can specify any option you would prefix with "-o " in the command line.
 
 Some useful options are "-d" (debug mode) and "-o allow_other" (specially when run as root: otherwise it would be the only user allowed to access the filesystem).
 
+To unmount it as an unprivileged, you can do:
+$ fusermount -u <mount point>
 
 MEDIA MANAGEMENT
 

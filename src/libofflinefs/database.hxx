@@ -155,13 +155,12 @@ T Database<T>::createregister(){
 template<typename T>
 std::list<T> Database<T>::listregisters(){
    Dbc* cur;
-   T lastid=(T)0;
+   T lastid=(T)-1;
    Dbt k;
    Dbt v;
    std::list<T> l;
    db->cursor(NULL,&cur,0);
    int err=cur->get(&k,&v,DB_FIRST);
-   l.push_back(lastid);
    while(!err && k.get_size()>=sizeof(typename Register::Key)){
       T id=((typename Register::Key*)k.get_data())->id;
       if(id!=lastid){

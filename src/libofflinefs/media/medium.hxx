@@ -38,6 +38,7 @@ class Medium:public Database<uint32_t>::Register{
       };
       class Stats{
 	 public:
+	    Stats():blocks(0),freeblocks(0) {}
 	    // Stored in multiples of 4096B
 	    unsigned long blocks;
 	    unsigned long freeblocks;
