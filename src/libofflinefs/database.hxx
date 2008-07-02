@@ -22,9 +22,11 @@
 
 
 class Environment{
+      unsigned int opcount;
    public:
       Environment(std::string path);
       virtual ~Environment();
+      void cleanlogs();
 
       DbEnv* dbenv;
 
@@ -52,6 +54,7 @@ class Buffer{
 template<typename T>
 class Database{
       T incrId(T id);
+      Environment& env;
       DbEnv* dbenv;
       std::string name;
       Db* db;
@@ -149,6 +152,7 @@ T Database<T>::createregister(){
       throw;
    }
    txn->commit(0);
+   env.cleanlogs();
    return id;
 }
 
@@ -176,7 +180,7 @@ std::list<T> Database<T>::listregisters(){
 }
 
 template<typename T>
-Database<T>::Database(Environment& env, std::string name):dbenv(env.dbenv),name(name),db(NULL) {}
+Database<T>::Database(Environment& env, std::string name):env(env),dbenv(env.dbenv),name(name),db(NULL) {}
 
 template<typename T>
 Database<T>::~Database(){

@@ -75,6 +75,7 @@ void Database<T>::Register::setattrv(std::string name,const Buffer& bv){
    Dbt v(bv.data,bv.size);
    if(db.db->put(NULL,&key,&v,0))
       throw std::runtime_error("Database::Register::setattrv: Error writing into the database.");
+   db.env.cleanlogs();
 }
 
 template<typename T>
@@ -83,6 +84,7 @@ void Database<T>::Register::delattr(std::string name){
    Dbt key(bk.data,bk.size);
    if(db.db->del(NULL,&key,0))
       throw EAttrNotFound();
+   db.env.cleanlogs();
 }
  
 template<typename T>
@@ -122,5 +124,6 @@ void Database<T>::Register::remove(){
       delattr(*it);
    Dbt key(&id,sizeof(T));
    db.db->del(NULL,&key,0);
+   db.env.cleanlogs();
 }
 
