@@ -29,8 +29,8 @@ std::string Medium_directory::realpath(File& f){
    return (basepath+"/"+filepath);   
 }
 
-std::auto_ptr<Medium_directory> Medium_directory::create(FsDb& dbs){
-   auto_ptr<Medium_directory> m(new Medium_directory(dbs,dbs.media.createregister()));
+std::auto_ptr<Medium_directory> Medium_directory::create(FsTxn& txns){
+   auto_ptr<Medium_directory> m(new Medium_directory(txns,txns.dbs.media.createregister(txns.media)));
    string mediumtype("directory");
    m->setattrv("mediumtype",Buffer(mediumtype.c_str(),mediumtype.size()));
    m->setattr<uint32_t>("refcount",0);
@@ -41,7 +41,7 @@ std::auto_ptr<Medium_directory> Medium_directory::create(FsDb& dbs){
 }
 
 std::auto_ptr<Source> Medium_directory::getsource(File& f,int mode){
-   return std::auto_ptr<Source>(new Source_file(f,realpath(f),mode));
+   return std::auto_ptr<Source>(new Source_file(txns.dbs,f.getid(),realpath(f),mode));
 }
 
 inline int real_truncate(const char* path, off_t length){

@@ -21,10 +21,10 @@
 
 class Symlink:public Node{
    public:
-      Symlink(FsDb& dbs,uint64_t id);
+      Symlink(FsTxn& txns,uint64_t id);
 
-      static std::auto_ptr<Symlink> create(FsDb& dbs);
-      static std::auto_ptr<Symlink> create(FsDb& dbs,const SContext& sctx,std::string path);
+      static std::auto_ptr<Symlink> create(FsTxn& txns);
+      static std::auto_ptr<Symlink> create(FsTxn& txns,const SContext& sctx,std::string path);
 };
 
 #endif

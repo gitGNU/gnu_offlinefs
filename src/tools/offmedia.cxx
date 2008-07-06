@@ -55,55 +55,67 @@ int usage(std::string prog){
 int addm(string type,attrlist attrs, string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
-   auto_ptr<Medium> m=Medium::create(dbs,type);
+   FsTxn txns(dbs);
+
+   auto_ptr<Medium> m=Medium::create(txns,type);
    for(attrlist::iterator it=attrs.begin();it!=attrs.end();it++)
       m->setattrv(it->first,Buffer(it->second.c_str(),it->second.size()));
+
+   txns.commit();
    return 0;
 }
 
 int listm(string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
-   list<uint32_t> l=dbs.media.listregisters();
+   FsTxn txns(dbs);
+   list<uint32_t> l=dbs.media.listregisters(txns.media);
    for(list<uint32_t>::iterator it=l.begin();it!=l.end();it++){
       cout << "#MEDIUM: "<< *it << "\n";
-      Database<uint32_t>::Register r(dbs.media,*it);
+      Database<uint32_t>::Register r(txns.media,*it);
       list<string> attrs=r.getattrs();
       for(list<string>::iterator it=attrs.begin();it!=attrs.end();it++){
 	 Buffer b=r.getattrv(*it);
 	 cout << "\t" << *it << "=" << string(b.data,b.size) << "\n";
       }
    }
+   txns.commit();
    return 0;
 }
 
 int rmm(uint32_t id,string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
-   auto_ptr<Medium> m=Medium::getmedium(dbs,id);
+   FsTxn txns(dbs);
+   auto_ptr<Medium> m=Medium::getmedium(txns,id);
    m->remove();
+   txns.commit();
    return 0;
 }
 
 int modm(uint32_t id,attrlist attrs, string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
-   auto_ptr<Medium> m=Medium::getmedium(dbs,id);
+   FsTxn txns(dbs);
+   auto_ptr<Medium> m=Medium::getmedium(txns,id);
    for(attrlist::iterator it=attrs.begin();it!=attrs.end();it++)
       m->setattrv(it->first,Buffer(it->second.c_str(),it->second.size()));
+   txns.commit();
    return 0;
 }
 
 int addf(uint32_t id,string path,string refpath,string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
-   auto_ptr<File> f=File::create(dbs,SContext(getuid(),getgid()),"/"+path);
-   auto_ptr<Medium> m=Medium::getmedium(dbs,id);
+   FsTxn txns(dbs);
+   auto_ptr<File> f=File::create(txns,SContext(getuid(),getgid()),"/"+path);
+   auto_ptr<Medium> m=Medium::getmedium(txns,id);
    Buffer b=m->getattrv("directory");
    string basedir(b.data,b.size);
    basedir=basedir.substr(0,basedir.find_last_not_of("/")+1);
    if(refpath.find(basedir)!=0){
       cerr << "Error: cannot recognize refpath as a subdirectory of the specified medium." << endl;
+      txns.abort();
       return 1;
    }
    m->addfile(*f,refpath.substr(basedir.size()));
@@ -118,6 +130,7 @@ int addf(uint32_t id,string path,string refpath,string dbroot){
       f->setattr<uid_t>("offlinefs.gid",st.st_gid);
       f->setattr<off_t>("offlinefs.size",st.st_size);
    }
+   txns.commit();
    return 0;
 }
 

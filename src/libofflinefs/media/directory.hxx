@@ -29,8 +29,8 @@
 class Medium_directory:public Medium{
       std::string realpath(File& f);
    public:
-      Medium_directory(FsDb& dbs,uint32_t id):Medium(dbs,id) {}
-      static std::auto_ptr<Medium_directory> create(FsDb& dbs);
+      Medium_directory(FsTxn& txns,uint32_t id):Medium(txns,id) {}
+      static std::auto_ptr<Medium_directory> create(FsTxn& txns);
       virtual std::auto_ptr<Source> getsource(File& f,int mode);
       virtual int truncate(File& f,off_t length);
       virtual Stats getstats();

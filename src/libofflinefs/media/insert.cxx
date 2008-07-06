@@ -21,14 +21,14 @@ using std::auto_ptr;
 using std::string;
 using std::list;
 
-std::auto_ptr<Medium_insert> Medium_insert::create(FsDb& dbs){
-   auto_ptr<Medium_directory> r=Medium_directory::create(dbs);
+std::auto_ptr<Medium_insert> Medium_insert::create(FsTxn& txns){
+   auto_ptr<Medium_directory> r=Medium_directory::create(txns);
    string mediumtype("insert");
    r->setattrv("mediumtype",Buffer(mediumtype.c_str(),mediumtype.size()));
    r->setattrv("label",Buffer(NULL,0));
    r->setattrv("checkcmd",Buffer(NULL,0));
    r->setattrv("insertscript",Buffer(NULL,0));
-   return auto_ptr<Medium_insert>(new Medium_insert(dbs,r->getid()));
+   return auto_ptr<Medium_insert>(new Medium_insert(txns,r->getid()));
 }
 
 std::auto_ptr<Source> Medium_insert::getsource(File& f,int mode){

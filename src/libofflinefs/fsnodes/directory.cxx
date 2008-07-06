@@ -22,7 +22,7 @@ using std::pair;
 
 Directory::EExists::EExists():runtime_error("Directory::EExists") {}
 
-Directory::Directory(FsDb& dbs,uint64_t id):Node(dbs,id),rdir(dbs.directories,id) {}
+Directory::Directory(FsTxn& txns,uint64_t id):Node(txns,id),rdir(txns.directories,id) {}
 
 void Directory::addchild(std::string name, Node& n){
    n.link();
@@ -48,7 +48,7 @@ void Directory::delchild(std::string name){
 
 std::auto_ptr<Node> Directory::getchild(std::string name){
    try{
-      return Node::getnode(dbs,rdir.getattr<uint64_t>(name)); 
+      return Node::getnode(txns,rdir.getattr<uint64_t>(name)); 
    }catch(Register::EAttrNotFound& e){
       throw ENotFound();
    }
@@ -59,17 +59,17 @@ void Directory::remove(){
    Node::remove();
 }
 
-std::auto_ptr<Directory> Directory::create(FsDb& dbs){
-   auto_ptr<Directory> n(new Directory(dbs,Node::create(dbs)->getid()));
+std::auto_ptr<Directory> Directory::create(FsTxn& txns){
+   auto_ptr<Directory> n(new Directory(txns,Node::create(txns)->getid()));
    n->setattr<mode_t>("offlinefs.mode",S_IFDIR);
    n->addchild(".",*n);
    return n;
 }
 
-auto_ptr<Directory> Directory::create(FsDb& dbs,const SContext& sctx,string path){
-   auto_ptr<Directory> n=Directory::create(dbs);
+auto_ptr<Directory> Directory::create(FsTxn& txns,const SContext& sctx,string path){
+   auto_ptr<Directory> n=Directory::create(txns);
    try{
-      Path p(dbs,sctx,path);
+      Path p(txns,sctx,path);
       p.parent->access(sctx,W_OK|X_OK);
       p.parent->addchild(p.leaf,*n);
       n->addchild("..",*p.parent);
@@ -80,7 +80,7 @@ auto_ptr<Directory> Directory::create(FsDb& dbs,const SContext& sctx,string path
    return n;
 }
 
-Directory::Path::Path(FsDb& dbs,const SContext& sctx, string path){
+Directory::Path::Path(FsTxn& txns,const SContext& sctx, string path){
    std::string parentpath;
    string::size_type slashpos=0;
    string::size_type notslash=path.find_last_not_of("/");
@@ -89,5 +89,5 @@ Directory::Path::Path(FsDb& dbs,const SContext& sctx, string path){
       leaf=path.substr(slashpos+1,notslash-slashpos);
       parentpath=path.substr(0,slashpos);
    }
-   parent=cast<Directory>(Node::getnode(dbs,sctx,parentpath));
+   parent=cast<Directory>(Node::getnode(txns,sctx,parentpath));
 }

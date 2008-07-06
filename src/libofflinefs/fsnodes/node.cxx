@@ -27,12 +27,12 @@ Node::ENotFound::ENotFound():runtime_error("Node::ENotFound") {}
 Node::EAccess::EAccess():runtime_error("Node::EAccess") {}
 
 
-Node::Node(FsDb& dbs,uint64_t id):Register(dbs.nodes,id),dbs(dbs) {}
+Node::Node(FsTxn& txns,uint64_t id):Register(txns.nodes,id),txns(txns) {}
 
 Node::~Node() {}
 
-auto_ptr<Node> Node::create(FsDb& dbs){
-   auto_ptr<Node> n(new Node(dbs,dbs.nodes.createregister()));
+auto_ptr<Node> Node::create(FsTxn& txns){
+   auto_ptr<Node> n(new Node(txns,txns.dbs.nodes.createregister(txns.nodes)));
    n->setattr<dev_t>("offlinefs.dev",0);
    n->setattr<nlink_t>("offlinefs.nlink",0);
    n->setattr<mode_t>("offlinefs.mode",0);
@@ -45,8 +45,8 @@ auto_ptr<Node> Node::create(FsDb& dbs){
    return n;
 }
 
-auto_ptr<Node> Node::create(FsDb& dbs,const SContext& sctx, string path){
-   return Node::create_<Node>(dbs,sctx,path);
+auto_ptr<Node> Node::create(FsTxn& txns,const SContext& sctx, string path){
+   return Node::create_<Node>(txns,sctx,path);
 }
 void Node::link(){
    setattr<nlink_t>("offlinefs.nlink",1+getattr<nlink_t>("offlinefs.nlink"));
@@ -61,25 +61,25 @@ void Node::unlink(){
 }
 
 
-std::auto_ptr<Node> Node::getnode(FsDb& dbs, uint64_t id){
-   Node n(dbs,id);
+std::auto_ptr<Node> Node::getnode(FsTxn& txns, uint64_t id){
+   Node n(txns,id);
    try{
       mode_t m=n.getattr<mode_t>("offlinefs.mode");
       if(S_ISREG(m))
-	 return auto_ptr<Node>(new File(dbs,id));
+	 return auto_ptr<Node>(new File(txns,id));
       else if(S_ISDIR(m))
-	 return auto_ptr<Node>(new Directory(dbs,id));
+	 return auto_ptr<Node>(new Directory(txns,id));
       else if(S_ISLNK(m))
-	 return auto_ptr<Node>(new Symlink(dbs,id));
+	 return auto_ptr<Node>(new Symlink(txns,id));
       else
-	 return auto_ptr<Node>(new Node(dbs,id));
+	 return auto_ptr<Node>(new Node(txns,id));
    }catch(EAttrNotFound& e){
       throw ENotFound();
    }
 }
 
-std::auto_ptr<Node> Node::getnode(FsDb& dbs, const SContext& sctx, std::string path){
-   auto_ptr<Node> n = Node::getnode(dbs,0);
+std::auto_ptr<Node> Node::getnode(FsTxn& txns, const SContext& sctx, std::string path){
+   auto_ptr<Node> n = Node::getnode(txns,0);
    string::size_type pos=0;
    string::size_type newpos=0;
 

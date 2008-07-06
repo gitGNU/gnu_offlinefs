@@ -18,7 +18,7 @@
 
 using std::string;
 
-Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1){
+Source_file::Source_file(FsDb& dbs,uint64_t fileid,std::string path,int mode):Source(dbs,fileid,mode),fd(-1){
    if(mode&O_ACCMODE==O_RDONLY){
       fd=open(path.c_str(),mode);
    }else{
@@ -61,6 +61,8 @@ int Source_file::write(const char* buf, size_t nbyte, off_t offset){
 }
 
 int Source_file::flush(){
+   FsTxn txns(dbs);
+   File f(txns,fileid);
    f.setattr<off_t>("offlinefs.size",size);
    return 0;
 }
@@ -73,6 +75,8 @@ int Source_file::fsync(int datasync){
    if(datasync)
       return fdatasync(fd);
    else{
+      FsTxn txns(dbs);
+      File f(txns,fileid);
       f.setattr<off_t>("offlinefs.size",size);
       return real_fsync(fd);
    }

@@ -26,26 +26,26 @@ using std::list;
 Medium::EInUse::EInUse():runtime_error("Medium::EInUse") {}
 Medium::ENotFound::ENotFound():runtime_error("Medium::ENotFound") {}
 
-std::auto_ptr<Medium> Medium::defaultmedium(FsDb& dbs){
-   return getmedium(dbs,0);
+std::auto_ptr<Medium> Medium::defaultmedium(FsTxn& txns){
+   return getmedium(txns,0);
 }
 
-std::auto_ptr<Medium> Medium::getmedium(FsDb& dbs, uint32_t id){
-   Register r(dbs.media,id);
+std::auto_ptr<Medium> Medium::getmedium(FsTxn& txns, uint32_t id){
+   Register r(txns.media,id);
    Buffer b=r.getattrv("mediumtype");
    string mediumtype(b.data,b.size);
    if(mediumtype=="directory")
-      return std::auto_ptr<Medium>(new Medium_directory(dbs,id));
+      return std::auto_ptr<Medium>(new Medium_directory(txns,id));
    else if(mediumtype=="insert")
-      return std::auto_ptr<Medium>(new Medium_insert(dbs,id));
+      return std::auto_ptr<Medium>(new Medium_insert(txns,id));
    throw ENotFound();
 }
       
-std::auto_ptr<Medium> Medium::create(FsDb& dbs, std::string type){
+std::auto_ptr<Medium> Medium::create(FsTxn& txns, std::string type){
    if(type=="directory")
-      return auto_ptr<Medium>(Medium_directory::create(dbs));
+      return auto_ptr<Medium>(Medium_directory::create(txns));
    else if(type=="insert")
-      return auto_ptr<Medium>(Medium_insert::create(dbs));
+      return auto_ptr<Medium>(Medium_insert::create(txns));
    throw ENotFound();
 }
       
@@ -55,11 +55,11 @@ void Medium::remove(){
    Register::remove();
 }
 
-Medium::Stats Medium::collectstats(FsDb& dbs){
+Medium::Stats Medium::collectstats(FsTxn& txns){
    Stats st;
-   list<uint32_t> rs=dbs.media.listregisters();
+   list<uint32_t> rs=txns.dbs.media.listregisters(txns.media);
    for(list<uint32_t>::iterator it=rs.begin();it!=rs.end();it++){
-      Stats st_=getmedium(dbs,*it)->getstats();
+      Stats st_=getmedium(txns,*it)->getstats();
       st.blocks+=st_.blocks;
       st.freeblocks+=st_.freeblocks;
    }

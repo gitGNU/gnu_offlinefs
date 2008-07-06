@@ -23,13 +23,14 @@
 // Class that would implement every possible operation over an open file
 class Source{
    protected:
-      File f;
+      FsDb& dbs;
+      uint64_t fileid;
       off_t size;
       int mode;
    public:
-      Source(File& f,int mode);
+      Source(FsDb& dbs,uint64_t fileid,int mode);
       virtual ~Source() {}
-      File& getfile() {return f;}
+      uint64_t getfileid() {return fileid;}
 
       // Analogous to the standard unix calls
       virtual int read(char* buf, size_t nbyte, off_t offset)=0;

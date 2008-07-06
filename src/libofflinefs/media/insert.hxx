@@ -35,8 +35,8 @@ class Medium_insert:public Medium_directory{
       bool check();
       void insert();
    public:
-      Medium_insert(FsDb& dbs,uint32_t id):Medium_directory(dbs,id) {}
-      static std::auto_ptr<Medium_insert> create(FsDb& dbs);
+      Medium_insert(FsTxn& txns,uint32_t id):Medium_directory(txns,id) {}
+      static std::auto_ptr<Medium_insert> create(FsTxn& txns);
       virtual std::auto_ptr<Source> getsource(File& f,int mode);
       virtual int truncate(File& f,off_t length);
       virtual Stats getstats();

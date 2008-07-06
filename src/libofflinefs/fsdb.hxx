@@ -41,4 +41,17 @@ class FsDb:public Environment{
       // Database storing medium attributes
       Database<uint32_t> media;
 };
+
+class FsTxn{
+   public:
+      FsDb& dbs;
+      Database<uint64_t>::Txn nodes;
+      Database<uint64_t>::Txn directories;
+      Database<uint32_t>::Txn media; 
+ 
+      FsTxn(FsDb& dbs):dbs(dbs),nodes(dbs.nodes),directories(dbs.directories),media(dbs.media){}
+      void commit() {nodes.commit(); directories.commit(); media.commit();}
+      void abort() {nodes.abort(); directories.abort(); media.abort();}
+};
+
 #endif

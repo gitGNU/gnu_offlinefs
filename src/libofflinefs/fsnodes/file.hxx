@@ -23,10 +23,10 @@ class Medium;
 
 class File:public Node{
    public:
-      File(FsDb& dbs,uint64_t id):Node(dbs,id) {}
+      File(FsTxn& txns,uint64_t id):Node(txns,id) {}
 
-      static std::auto_ptr<File> create(FsDb& dbs);
-      static std::auto_ptr<File> create(FsDb& dbs,const SContext& sctx,std::string path);
+      static std::auto_ptr<File> create(FsTxn& txns);
+      static std::auto_ptr<File> create(FsTxn& txns,const SContext& sctx,std::string path);
 
       virtual void remove();
 

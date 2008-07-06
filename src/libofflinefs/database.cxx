@@ -24,6 +24,7 @@ Environment::Environment(std::string path):opcount(0){
 
    dbenv=new DbEnv(0);
    dbenv->open(path.c_str(),DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_RECOVER|DB_REGISTER|DB_THREAD,0);
+   dbenv->set_flags(DB_LOG_AUTOREMOVE,1);
    dbenv->set_lk_detect(DB_LOCK_RANDOM);
    cleanlogs();
 }
@@ -32,7 +33,6 @@ void Environment::cleanlogs(){
    if(!opcount--){
       opcount=100000;
       dbenv->txn_checkpoint(0,0,0);
-      dbenv->log_archive(NULL,DB_ARCH_REMOVE);
    }
 }
 Environment::~Environment(){

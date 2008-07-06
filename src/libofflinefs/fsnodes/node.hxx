@@ -23,7 +23,7 @@
 
 class Node:public Database<uint64_t>::Register{
    protected:
-      template <typename T> static std::auto_ptr<T> create_(FsDb& dbs,const SContext& sctx, std::string path);
+      template <typename T> static std::auto_ptr<T> create_(FsTxn& txns,const SContext& sctx, std::string path);
    public:
       template<typename T>
       class EBadCast:public std::runtime_error{
@@ -38,24 +38,24 @@ class Node:public Database<uint64_t>::Register{
 	 public:
 	    EAccess();
       };
-      FsDb& dbs;
+      FsTxn& txns;
 
-      Node(FsDb& dbs,uint64_t id);
+      Node(FsTxn& txns,uint64_t id);
       virtual ~Node();
 
       //Initialize a "neutral" node (with its mode attribute = 0)
-      static std::auto_ptr<Node> create(FsDb& dbs);
+      static std::auto_ptr<Node> create(FsTxn& txns);
       //The same as the previous one, but also link it to the specified path.
       // It throws EBadCast<Directory> if one of the intermediate path elements
       // isn't a directory, ENotFound if one of them doesn't exist, EAccess if the
       // caller doesn't have enough permissions.
-      static std::auto_ptr<Node> create(FsDb& dbs, const SContext& sctx, std::string path); 
+      static std::auto_ptr<Node> create(FsTxn& txns, const SContext& sctx, std::string path); 
 
       // Instance a Node derived object, depending on the type stored in the database
       // It throws ENotFound if the node doesn't exist
-      static std::auto_ptr<Node> getnode(FsDb& dbs, uint64_t id);
+      static std::auto_ptr<Node> getnode(FsTxn& txns, uint64_t id);
       // The same as before. It can also throw EBadCast<Directory> and EAccess
-      static std::auto_ptr<Node> getnode(FsDb& dbs, const SContext& sctx, std::string path);
+      static std::auto_ptr<Node> getnode(FsTxn& txns, const SContext& sctx, std::string path);
 
       template<typename T>
       static std::auto_ptr<T> cast(std::auto_ptr<Node> n){

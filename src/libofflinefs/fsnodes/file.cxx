@@ -21,19 +21,19 @@
 using std::auto_ptr;
 using std::string;
 
-auto_ptr<File> File::create(FsDb& dbs){
-   auto_ptr<File> n(new File(dbs,Node::create(dbs)->getid()));
+auto_ptr<File> File::create(FsTxn& txns){
+   auto_ptr<File> n(new File(txns,Node::create(txns)->getid()));
    n->setattr<mode_t>("offlinefs.mode",S_IFREG);
    return n;
 }
 
-std::auto_ptr<File> File::create(FsDb& dbs,const SContext& sctx,std::string path){
-   return Node::create_<File>(dbs,sctx,path);
+std::auto_ptr<File> File::create(FsTxn& txns,const SContext& sctx,std::string path){
+   return Node::create_<File>(txns,sctx,path);
 }
 
 void File::remove(){
    try{
-      Medium::getmedium(dbs,getattr<uint32_t>("offlinefs.mediumid"))->delfile(*this);
+      Medium::getmedium(txns,getattr<uint32_t>("offlinefs.mediumid"))->delfile(*this);
    }catch(...){}
    Node::remove();
 }
@@ -41,9 +41,9 @@ void File::remove(){
 auto_ptr<Medium> File::getmedium(std::string phid){
    auto_ptr<Medium> m;
    try{
-      m=Medium::getmedium(dbs,getattr<uint32_t>("offlinefs.mediumid"));
+      m=Medium::getmedium(txns,getattr<uint32_t>("offlinefs.mediumid"));
    }catch(EAttrNotFound& e){
-      m=Medium::defaultmedium(dbs);
+      m=Medium::defaultmedium(txns);
       m->addfile(*this,phid);
    }
    return m;

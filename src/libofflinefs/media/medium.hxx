@@ -25,9 +25,10 @@
 // Class defining the interface of an abstract object that would implement
 // all the specific operations over the data contained in a file
 class Medium:public Database<uint32_t>::Register{
-      FsDb& dbs;
+   protected:
+      FsTxn& txns;
    public:
-      Medium(FsDb& dbs,uint32_t id):Register(dbs.media,id),dbs(dbs) {}
+      Medium(FsTxn& txns,uint32_t id):Register(txns.media,id),txns(txns) {}
       class EInUse:public std::runtime_error{
 	 public:
 	    EInUse();
@@ -45,14 +46,14 @@ class Medium:public Database<uint32_t>::Register{
       };
 
       // Default medium associated to a file when it gets created
-      static std::auto_ptr<Medium> defaultmedium(FsDb& dbs);
+      static std::auto_ptr<Medium> defaultmedium(FsTxn& txns);
       // Instances a medium derived object (depending on the stored medium type)
       // It can throw EAttrNotFound if the medium does not exist or ENotFound if
       // the stored medium type is not implemented.
-      static std::auto_ptr<Medium> getmedium(FsDb& dbs, uint32_t id);
+      static std::auto_ptr<Medium> getmedium(FsTxn& txns, uint32_t id);
       // Initialize a medium of the specified type. It throws ENotFound if 
       // the type is not implemented.
-      static std::auto_ptr<Medium> create(FsDb& dbs, std::string type);
+      static std::auto_ptr<Medium> create(FsTxn& txns, std::string type);
 
       // It throws EInUse if it's associated with any file
       virtual void remove();
@@ -63,7 +64,7 @@ class Medium:public Database<uint32_t>::Register{
 
       virtual Stats getstats()=0; 
       // Returns the global filesystem statistics for the media stored in the database
-      static Stats collectstats(FsDb& dbs);
+      static Stats collectstats(FsTxn& txns);
 
       // Link file f with this medium, phid should be a string that will be used
       // to locate the file in the medium

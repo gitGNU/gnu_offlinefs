@@ -20,7 +20,6 @@
 #include "common.hxx"
 #include <asm/byteorder.h>
 
-
 class Environment{
       unsigned int opcount;
    public:
@@ -59,9 +58,21 @@ class Database{
       std::string name;
       Db* db;
    public:
+
+      class Txn{
+	    DbTxn* txn;
+	 public:
+	    Txn(Database<T>& db);
+	    ~Txn();
+	    void commit();
+	    void abort();
+	    Dbc* cur;
+	    Database<T>& db;
+      };
+
       class Register{
 	 private:
-	    Database<T>& db;
+	    typename Database<T>::Txn& txn;
 	    T id;
 	    Buffer mkey(std::string attr);
 	 public:
@@ -75,7 +86,7 @@ class Database{
 		  EAttrNotFound();
 	    };
 	    
-	    Register(Database<T>& db, T id);
+	    Register(typename Database<T>::Txn& txn, T id);
 	    Register(const Register& r);
 	    virtual ~Register();
 	    
@@ -113,67 +124,93 @@ class Database{
       ~Database();
 
       // Initialize a new register, and return its ID
-      T createregister();
+      T createregister(Txn& txn);
 
-      std::list<T> listregisters();
+      std::list<T> listregisters(Txn& txn);
+
 };
 
+
 template<typename T>
-T Database<T>::createregister(){
-   T id=(T)0;
-   Dbc* cur;
-   DbTxn* txn;
-   Dbt key;
-   Dbt v;
-   int err;
-   dbenv->txn_begin(NULL,&txn,0);
+Database<T>::Txn::Txn(Database<T>& db):db(db){
+   db.dbenv->txn_begin(NULL,&txn,0);
    try{
-      db->cursor(txn,&cur,0);
-      try{
-	 err=cur->get(&key,&v,DB_LAST);
-      
-	 if(err!=DB_NOTFOUND){
-	    if(err || key.get_size()<sizeof(typename Register::Key))
-	       throw std::runtime_error("Database::createregister: Error reading from the database.");
-	    id=incrId(((typename Register::Key*)key.get_data())->id);
-	 }
-	 key.set_data(&id);
-	 key.set_size(sizeof(T));
-	 v.set_data(NULL);
-	 v.set_size(0);
-	 cur->put(&key,&v,DB_KEYFIRST);
-      }catch(...){
-	 cur->close();
-	 throw;
-      }
-      cur->close();
+      db.db->cursor(txn,&cur,0);
    }catch(...){
       txn->abort();
       throw;
    }
-   txn->commit(0);
+}
+
+template<typename T>
+Database<T>::Txn::~Txn(){
+   commit();
+}   
+
+template<typename T>
+void Database<T>::Txn::commit(){
+   if(cur){
+      cur->close();
+      cur=NULL;
+   }
+   if(txn){
+      txn->commit(0);
+      txn=NULL;
+   }
+}
+
+template<typename T>
+void Database<T>::Txn::abort(){
+   if(cur){
+      cur->close();
+      cur=NULL;
+   }
+   if(txn){
+      txn->abort();
+      txn=NULL;
+   }
+}
+
+template<typename T>
+T Database<T>::createregister(Txn& txn){
+   T id=(T)0;
+   Dbt key;
+   Dbt v;
+   int err;
+
+   err=txn.cur->get(&key,&v,DB_LAST|DB_RMW);
+   if(err!=DB_NOTFOUND){
+      if(err || key.get_size()<sizeof(typename Register::Key))
+	 throw std::runtime_error("Database::createregister: Error reading from the database.");
+      id=incrId(((typename Register::Key*)key.get_data())->id);
+   }
+   key.set_data(&id);
+   key.set_size(sizeof(T));
+   v.set_data(NULL);
+   v.set_size(0);
+   txn.cur->put(&key,&v,DB_KEYFIRST);
+
    env.cleanlogs();
    return id;
 }
 
 template<typename T>
-std::list<T> Database<T>::listregisters(){
-   Dbc* cur;
+std::list<T> Database<T>::listregisters(Txn& txn){
    T lastid=(T)-1;
    Dbt k;
    Dbt v;
    std::list<T> l;
-   db->cursor(NULL,&cur,0);
-   int err=cur->get(&k,&v,DB_FIRST);
+
+   int err=txn.cur->get(&k,&v,DB_FIRST|DB_RMW);
    while(!err && k.get_size()>=sizeof(typename Register::Key)){
       T id=((typename Register::Key*)k.get_data())->id;
       if(id!=lastid){
 	 l.push_back(id);
 	 lastid=id;
       }
-      err=cur->get(&k,&v,DB_NEXT);
+      err=txn.cur->get(&k,&v,DB_NEXT|DB_RMW);
    }
-   cur->close();
+
    if(err && err!=DB_NOTFOUND)
       throw std::runtime_error("Database::listregisters: error accessing the database.");
    return l;
@@ -190,23 +227,23 @@ Database<T>::~Database(){
 template<typename T>
 void Database<T>::open(){
       db=new Db(dbenv,0);
-      db->open(NULL,"offlinefs.db",name.c_str(),DB_BTREE,DB_AUTO_COMMIT|DB_THREAD,0);
+      db->open(NULL,(name+".db").c_str(),NULL,DB_BTREE,DB_AUTO_COMMIT|DB_THREAD,0);
 }
 
 template<typename T>
 void Database<T>::close(){
-      if(db){
-	 db->close(0);
-	 delete db;
-	 db=0;
-      }
+   if(db){
+      db->close(0);
+      delete db;
+      db=0;
+   }
 }
 
 template<typename T>
 void Database<T>::rebuild(){
    close();
    db=new Db(dbenv,0);
-   db->open(NULL,"offlinefs.db",name.c_str(),DB_BTREE,DB_AUTO_COMMIT|DB_CREATE|DB_THREAD,0);
+   db->open(NULL,(name+".db").c_str(),NULL,DB_BTREE,DB_AUTO_COMMIT|DB_CREATE|DB_THREAD,0);
    db->truncate(NULL,NULL,0);
 }
 
@@ -220,6 +257,7 @@ T Database<T>::incrId(T id){
    }while(p!=(char*)&id && !*p);
    return id;
 }
+
 
 #include "register.hxx"
 

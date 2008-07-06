@@ -20,17 +20,17 @@
 using std::auto_ptr;
 using std::string;
 
-Symlink::Symlink(FsDb& dbs,uint64_t id):Node(dbs,id) {
+Symlink::Symlink(FsTxn& txns,uint64_t id):Node(txns,id) {
 }
 
 
-auto_ptr<Symlink> Symlink::create(FsDb& dbs){
-   auto_ptr<Symlink> n(new Symlink(dbs,Node::create(dbs)->getid()));
+auto_ptr<Symlink> Symlink::create(FsTxn& txns){
+   auto_ptr<Symlink> n(new Symlink(txns,Node::create(txns)->getid()));
    n->setattr<mode_t>("offlinefs.mode",S_IFLNK);
    n->setattrv("offlinefs.symlink",Buffer());
    return n;
 }
 
-std::auto_ptr<Symlink> Symlink::create(FsDb& dbs,const SContext& sctx,std::string path){
-   return Node::create_<Symlink>(dbs,sctx,path);
+std::auto_ptr<Symlink> Symlink::create(FsTxn& txns,const SContext& sctx,std::string path){
+   return Node::create_<Symlink>(txns,sctx,path);
 }
