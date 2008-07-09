@@ -23,6 +23,8 @@
 #include <sources.hxx>
 #include <media.hxx>
 #include <pthread.h>
+#include "scontextcache.hxx"
+#include "pathcache.hxx"
 
 #define MAX_OPEN_FILES 512
 
@@ -31,6 +33,10 @@ class FS{
       pthread_mutex_t openmutex;
       Source* openFiles[MAX_OPEN_FILES];
       FsDb dbs;
+
+      SContextCache scache;
+      PathCache_hash pcache;
+      inline SContext userctx();
    public:
       FS(std::string dbroot);
       ~FS();
@@ -61,7 +67,6 @@ class FS{
       int removexattr(const char* path, const char* name);
       int utimens(const char* path, const struct timespec tv[2]);
       int access(const char* path, int mode);
-
 };
 
 #endif

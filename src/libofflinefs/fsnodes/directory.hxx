@@ -43,24 +43,27 @@ class Directory:public Node{
       //Initialize an empty directory
       static std::auto_ptr<Directory> create(FsTxn& txns);
       //Initialize an empty directory an link it at path, it can throw EAccess, ENotFound and EBadCast<Directory>
-      static std::auto_ptr<Directory> create(FsTxn& txns,const SContext& sctx, std::string path);
+      static std::auto_ptr<Directory> create(FsTxn& txns,const SContext& sctx, PathCache& pch, std::string path);
 
       class Path{
 	 public:
+	    Path() {}
+
 	    //Parse the path, copy the leaf name (the last token of the path) to leaf,
 	    // even if it doesn't exist, and instance a Directory object representing
 	    // leaf's parent
-	    Path(FsTxn& txns,const SContext& sctx, std::string path);
+	    Path(FsTxn& txns, const SContext& sctx, PathCache& pch, std::string path);
+
 	    std::auto_ptr<Directory> parent;
 	    std::string leaf;
       };
 };
 
 template <typename T> 
-std::auto_ptr<T> Node::create_(FsTxn& txns,const SContext& sctx, std::string path){
+std::auto_ptr<T> Node::create_(FsTxn& txns,const SContext& sctx, PathCache& pch, std::string path){
    std::auto_ptr<T> n=T::create(txns);
    try{
-      Directory::Path p(txns,sctx,path);
+      Directory::Path p(txns,sctx,pch,path);
       p.parent->access(sctx,W_OK|X_OK);
       p.parent->addchild(p.leaf,*n);
    }catch(...){

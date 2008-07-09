@@ -99,7 +99,6 @@ class Database{
 
 	    // Set the specified attribute
 	    void setattrv(std::string name,const Buffer& v);
-	    
 
 	    //Get the specified attribute (as a type S)
 	    //If the type's size doesn't match the stored one,

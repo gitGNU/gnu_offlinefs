@@ -108,7 +108,8 @@ int addf(uint32_t id,string path,string refpath,string dbroot){
    FsDb dbs(dbroot);
    dbs.open();
    FsTxn txns(dbs);
-   auto_ptr<File> f=File::create(txns,SContext(getuid(),getgid()),"/"+path);
+   PathCache_null pcache;
+   auto_ptr<File> f=File::create(txns,SContext(getuid(),getgid()),pcache,"/"+path);
    auto_ptr<Medium> m=Medium::getmedium(txns,id);
    Buffer b=m->getattrv("directory");
    string basedir(b.data,b.size);

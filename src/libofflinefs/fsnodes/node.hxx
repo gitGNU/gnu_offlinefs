@@ -20,10 +20,11 @@
 #include <common.hxx>
 #include <fsdb.hxx>
 #include <scontext.hxx>
+#include <pathcache.hxx>
 
 class Node:public Database<uint64_t>::Register{
    protected:
-      template <typename T> static std::auto_ptr<T> create_(FsTxn& txns,const SContext& sctx, std::string path);
+      template <typename T> static std::auto_ptr<T> create_(FsTxn& txns,const SContext& sctx, PathCache& pch, std::string path);
    public:
       template<typename T>
       class EBadCast:public std::runtime_error{
@@ -49,13 +50,15 @@ class Node:public Database<uint64_t>::Register{
       // It throws EBadCast<Directory> if one of the intermediate path elements
       // isn't a directory, ENotFound if one of them doesn't exist, EAccess if the
       // caller doesn't have enough permissions.
-      static std::auto_ptr<Node> create(FsTxn& txns, const SContext& sctx, std::string path); 
+      static std::auto_ptr<Node> create(FsTxn& txns, const SContext& sctx, PathCache& pch, std::string path); 
 
       // Instance a Node derived object, depending on the type stored in the database
       // It throws ENotFound if the node doesn't exist
       static std::auto_ptr<Node> getnode(FsTxn& txns, uint64_t id);
       // The same as before. It can also throw EBadCast<Directory> and EAccess
-      static std::auto_ptr<Node> getnode(FsTxn& txns, const SContext& sctx, std::string path);
+      static inline std::auto_ptr<Node> getnode(FsTxn& txns, const SContext& sctx, PathCache& pch, std::string path){
+	 return pch.getnode(txns,sctx,path);
+      }
 
       template<typename T>
       static std::auto_ptr<T> cast(std::auto_ptr<Node> n){

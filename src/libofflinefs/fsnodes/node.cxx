@@ -45,8 +45,8 @@ auto_ptr<Node> Node::create(FsTxn& txns){
    return n;
 }
 
-auto_ptr<Node> Node::create(FsTxn& txns,const SContext& sctx, string path){
-   return Node::create_<Node>(txns,sctx,path);
+auto_ptr<Node> Node::create(FsTxn& txns,const SContext& sctx, PathCache& pch, string path){
+   return Node::create_<Node>(txns,sctx,pch,path);
 }
 void Node::link(){
    setattr<nlink_t>("offlinefs.nlink",1+getattr<nlink_t>("offlinefs.nlink"));
@@ -75,28 +75,6 @@ std::auto_ptr<Node> Node::getnode(FsTxn& txns, uint64_t id){
 	 return auto_ptr<Node>(new Node(txns,id));
    }catch(EAttrNotFound& e){
       throw ENotFound();
-   }
-}
-
-std::auto_ptr<Node> Node::getnode(FsTxn& txns, const SContext& sctx, std::string path){
-   auto_ptr<Node> n = Node::getnode(txns,0);
-   string::size_type pos=0;
-   string::size_type newpos=0;
-
-   while((newpos=path.find("/",pos))!=string::npos){
-      if(newpos!=pos){
-	 n->access(sctx,X_OK);
-	 n=cast<Directory>(n)->getchild(path.substr(pos,newpos-pos));
-      }	 
-      pos=newpos+1;
-   }
-      
-   string name=path.substr(pos,newpos);
-   if(name.empty())
-      return n;
-   else{
-      n->access(sctx,X_OK);
-      return cast<Directory>(n)->getchild(path.substr(pos,newpos));
    }
 }
 

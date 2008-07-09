@@ -31,6 +31,6 @@ auto_ptr<Symlink> Symlink::create(FsTxn& txns){
    return n;
 }
 
-std::auto_ptr<Symlink> Symlink::create(FsTxn& txns,const SContext& sctx,std::string path){
-   return Node::create_<Symlink>(txns,sctx,path);
+std::auto_ptr<Symlink> Symlink::create(FsTxn& txns,const SContext& sctx,PathCache& pch,std::string path){
+   return Node::create_<Symlink>(txns,sctx,pch,path);
 }

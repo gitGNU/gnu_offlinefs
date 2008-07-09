@@ -66,10 +66,10 @@ std::auto_ptr<Directory> Directory::create(FsTxn& txns){
    return n;
 }
 
-auto_ptr<Directory> Directory::create(FsTxn& txns,const SContext& sctx,string path){
+auto_ptr<Directory> Directory::create(FsTxn& txns,const SContext& sctx,PathCache& pch, string path){
    auto_ptr<Directory> n=Directory::create(txns);
    try{
-      Path p(txns,sctx,path);
+      Path p(txns,sctx,pch,path);
       p.parent->access(sctx,W_OK|X_OK);
       p.parent->addchild(p.leaf,*n);
       n->addchild("..",*p.parent);
@@ -80,7 +80,7 @@ auto_ptr<Directory> Directory::create(FsTxn& txns,const SContext& sctx,string pa
    return n;
 }
 
-Directory::Path::Path(FsTxn& txns,const SContext& sctx, string path){
+Directory::Path::Path(FsTxn& txns,const SContext& sctx,PathCache& pch, string path){
    std::string parentpath;
    string::size_type slashpos=0;
    string::size_type notslash=path.find_last_not_of("/");
@@ -89,5 +89,5 @@ Directory::Path::Path(FsTxn& txns,const SContext& sctx, string path){
       leaf=path.substr(slashpos+1,notslash-slashpos);
       parentpath=path.substr(0,slashpos);
    }
-   parent=cast<Directory>(Node::getnode(txns,sctx,parentpath));
+   parent=cast<Directory>(pch.getnode(txns,sctx,parentpath));
 }

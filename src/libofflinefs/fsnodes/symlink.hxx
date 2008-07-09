@@ -24,7 +24,7 @@ class Symlink:public Node{
       Symlink(FsTxn& txns,uint64_t id);
 
       static std::auto_ptr<Symlink> create(FsTxn& txns);
-      static std::auto_ptr<Symlink> create(FsTxn& txns,const SContext& sctx,std::string path);
+      static std::auto_ptr<Symlink> create(FsTxn& txns,const SContext& sctx,PathCache& pch,std::string path);
 };
 
 #endif
