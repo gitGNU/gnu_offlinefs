@@ -41,7 +41,7 @@ std::auto_ptr<Medium_directory> Medium_directory::create(FsTxn& txns){
 }
 
 std::auto_ptr<Source> Medium_directory::getsource(File& f,int mode){
-   return std::auto_ptr<Source>(new Source_file(txns.dbs,f.getid(),realpath(f),mode));
+   return std::auto_ptr<Source>(new Source_file(txns,f.getid(),realpath(f),mode));
 }
 
 inline int real_truncate(const char* path, off_t length){

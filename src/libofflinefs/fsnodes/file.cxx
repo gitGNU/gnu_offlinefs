@@ -37,14 +37,3 @@ void File::remove(){
    }catch(...){}
    Node::remove();
 }
-
-auto_ptr<Medium> File::getmedium(std::string phid){
-   auto_ptr<Medium> m;
-   try{
-      m=Medium::getmedium(txns,getattr<uint32_t>("offlinefs.mediumid"));
-   }catch(EAttrNotFound& e){
-      m=Medium::defaultmedium(txns);
-      m->addfile(*this,phid);
-   }
-   return m;
-}

@@ -15,7 +15,6 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "scontextcache.hxx"
-#include <sys/stat.h>
 
 SContextCache::SContextCache(): nelems(0),checktime(0){
    if(pthread_mutex_init(&mutex,NULL))
@@ -45,6 +44,7 @@ SContext SContextCache::get(uid_t uid,gid_t gid){
       uptodate();
       it=cache.find(CKey(uid,gid));
       if(it==cache.end()){
+	 //Keep the cache size less than SCONTEXTCACHE_MAX_ELEMS
 	 if(nelems==SCONTEXTCACHE_MAX_ELEMS){
 	    cache.erase(queue.back());
 	    queue.pop_back();

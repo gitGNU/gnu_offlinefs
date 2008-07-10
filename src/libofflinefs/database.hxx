@@ -59,6 +59,7 @@ class Database{
       Db* db;
    public:
 
+      //Every database operation requires a transaction object:
       class Txn{
 	    DbTxn* txn;
 	 public:
@@ -248,7 +249,7 @@ void Database<T>::rebuild(){
 
 template<typename T>
 T Database<T>::incrId(T id){
-//Dirty hack to allow using arbitrary T...
+//Dirty hack to allow using arbitrary T... (Not really necessary)
    char* p=(char*)&id+sizeof(T);
    do{
       p--;

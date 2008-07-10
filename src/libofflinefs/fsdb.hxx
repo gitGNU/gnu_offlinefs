@@ -42,6 +42,7 @@ class FsDb:public Environment{
       Database<uint32_t> media;
 };
 
+//Automatically begin/commit a transaction in each database
 class FsTxn{
    public:
       FsDb& dbs;

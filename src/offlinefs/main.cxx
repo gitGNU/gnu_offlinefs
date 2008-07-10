@@ -26,9 +26,20 @@ struct Params{
       const char* dbroot;
       const char* dbgroup;
       const char* dbumask;
+      const char* defmedium;
       bool help;
       bool rebuild;
-} params={NULL,NULL,NULL,false,false};
+} params={NULL,NULL,NULL,NULL,false,false};
+
+struct ParsedParams{
+      ParsedParams():defmedium(0) {
+	 if(getenv("HOME")){
+	    dbroot=std::string(getenv("HOME"))+"/.offlinefs/";
+	 }
+      }
+      std::string dbroot;
+      uint32_t defmedium;
+};
 
 std::string dbroot_default;
 
@@ -42,6 +53,7 @@ struct fuse_opt opts[] ={
    {"dbroot=%s",offsetof(Params,dbroot),0},
    {"dbgroup=%s",offsetof(Params,dbgroup),0},
    {"dbumask=%s",offsetof(Params,dbumask),0},
+   {"defmedium=%s",offsetof(Params,defmedium),0},
    FUSE_OPT_KEY("-V", KEY_VERSION),
    FUSE_OPT_KEY("--version", KEY_VERSION),
    FUSE_OPT_KEY("-h", KEY_HELP),
@@ -59,6 +71,7 @@ void usage(){
    std::cerr << "\t-o dbroot=<dbroot>\tDatabase root\n";
    std::cerr << "\t-o dbgroup=<dbroot>\tDatabase group\n";
    std::cerr << "\t-o dbumask=<dbroot>\tDatabase umask (octal)\n";
+   std::cerr << "\t-o defmedium=<medium id> Default medium a file is created in\n";
    std::cerr << "\t--rebuilddb\t\tRebuild DB mode\n";
    std::cerr << std::endl;
 }
@@ -100,8 +113,8 @@ int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
 }
 
 void* init_(fuse_conn_info* conn){
-   Params* p=(Params*)fuse_get_context()->private_data;
-   return new FS(p->dbroot);
+   ParsedParams* p=(ParsedParams*)fuse_get_context()->private_data;
+   return new FS(p->dbroot,p->defmedium);
 }
 
 void destroy_(void *userdata){
@@ -247,11 +260,7 @@ int main(int argc, char** argv){
 
   struct fuse_args args = FUSE_ARGS_INIT(argc,argv);
 
-  if(getenv("HOME")){
-     dbroot_default=std::string(getenv("HOME"))+"/.offlinefs/";
-     params.dbroot=dbroot_default.c_str();
-  }
-
+  ParsedParams pparams;
 
   if(fuse_opt_parse(&args,&params,opts,opt_proc)){
      std::cerr << "Error parsing command line" << std::endl;
@@ -280,26 +289,37 @@ int main(int argc, char** argv){
       umask(dbumask);
    }
 
+   if(params.defmedium){
+      std::istringstream is(params.defmedium);
+      is >> pparams.defmedium;
+      if(!is){
+	 std::cerr << "Error parsing defmedium.\n";
+	 return 1;
+      }
+   }
 
   if(!params.help){
-     if(!params.dbroot){
+     if(params.dbroot){
+	if(params.dbroot[0]!='/'){
+	   std::cerr << "Error: expecting absolute path for dbroot.\n";
+	   return -1;
+	}
+	pparams.dbroot=std::string(params.dbroot);
+     }else if(pparams.dbroot.empty()){
 	std::cerr << "No database root found!\n";
 	usage();
 	return -1;
      }
-     if(params.dbroot[0]!='/'){
-	std::cerr << "Error: expecting absolute path for dbroot.\n";
-	return -1;
-     }
+
      if(params.rebuild){
-	std::cerr << "Rebuilding database at " << params.dbroot << " ...\n";
-	FsDb(params.dbroot).rebuild();
+	std::cerr << "Rebuilding database at " << pparams.dbroot << " ...\n";
+	FsDb(pparams.dbroot).rebuild();
 	std::cerr << "Done.\n";
 	return 0;
      }
   }
 
-  int err= fuse_main(args.argc, args.argv,&ops,&params);
+  int err= fuse_main(args.argc, args.argv,&ops,&pparams);
 
   fuse_opt_free_args(&args);
 

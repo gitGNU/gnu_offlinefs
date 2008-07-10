@@ -45,8 +45,6 @@ class Medium:public Database<uint32_t>::Register{
 	    unsigned long freeblocks;
       };
 
-      // Default medium associated to a file when it gets created
-      static std::auto_ptr<Medium> defaultmedium(FsTxn& txns);
       // Instances a medium derived object (depending on the stored medium type)
       // It can throw EAttrNotFound if the medium does not exist or ENotFound if
       // the stored medium type is not implemented.

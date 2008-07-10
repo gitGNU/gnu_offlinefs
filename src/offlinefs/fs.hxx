@@ -37,8 +37,13 @@ class FS{
       SContextCache scache;
       PathCache_hash pcache;
       inline SContext userctx();
+
+      uint32_t defmedium;
+      //Get the medium associated to f
+      //If it isn't associated with any medium, associate it with the default one
+      std::auto_ptr<Medium> getmedium(FsTxn& txns,File& f,std::string phid);
    public:
-      FS(std::string dbroot);
+      FS(std::string dbroot,uint32_t defmedium);
       ~FS();
 
       int getattr(const char* path, struct stat* st);

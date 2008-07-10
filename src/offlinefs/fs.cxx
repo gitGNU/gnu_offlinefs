@@ -27,7 +27,18 @@ inline SContext FS::userctx(){
    return scache.get(fuse_get_context()->uid,fuse_get_context()->gid);
 }
 
-FS::FS(string dbroot):dbs(dbroot){
+auto_ptr<Medium> FS::getmedium(FsTxn& txns,File& f,std::string phid){
+   auto_ptr<Medium> m;
+   try{
+      m=Medium::getmedium(txns,f.getattr<uint32_t>("offlinefs.mediumid"));
+   }catch(Node::EAttrNotFound& e){
+      m=Medium::getmedium(txns,defmedium);
+      m->addfile(f,phid);
+   }
+   return m;
+}
+
+FS::FS(string dbroot,uint32_t defmedium):dbs(dbroot),defmedium(defmedium) {
    memset(openFiles,0,sizeof(openFiles));
    dbs.open();
    if(pthread_mutex_init(&openmutex,NULL))
@@ -290,7 +301,7 @@ int FS::truncate(const char* path, off_t length){
       n->access(sctx,W_OK);
       n->setattr<time_t>("offlinefs.mtime",time(NULL));
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
-      return n->getmedium(path)->truncate(*n,length);
+      return getmedium(txns,*n,path)->truncate(*n,length);
    }catch(exception& e){
       return errcode(e);
    }
@@ -306,7 +317,7 @@ int FS::open(const char* path, struct fuse_file_info* fi){
 	 n->access(sctx,R_OK);
       if((fi->flags&O_ACCMODE)==O_WRONLY||(fi->flags&O_ACCMODE)==O_RDWR)
 	 n->access(sctx,W_OK);
-      auto_ptr<Source> s=n->getmedium(path)->getsource(*n,fi->flags);
+      auto_ptr<Source> s=getmedium(txns,*n,path)->getsource(*n,fi->flags);
 
       for(int i=0;i<MAX_OPEN_FILES;i++)
 	 if(openFiles[i]==NULL){

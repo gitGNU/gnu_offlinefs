@@ -28,7 +28,7 @@ class Source{
       off_t size;
       int mode;
    public:
-      Source(FsDb& dbs,uint64_t fileid,int mode);
+      Source(FsTxn& txns,uint64_t fileid,int mode);
       virtual ~Source() {}
       uint64_t getfileid() {return fileid;}
 

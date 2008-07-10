@@ -27,6 +27,7 @@ std::auto_ptr<Node> PathCache_null::getnode(FsTxn& txns,const SContext& sctx, st
    string::size_type pos=0;
    string::size_type newpos=0;
 
+   //Check search permission on every parent directory
    while((newpos=path.find("/",pos))!=string::npos){
       if(newpos!=pos){
 	 n->access(sctx,X_OK);
@@ -34,7 +35,7 @@ std::auto_ptr<Node> PathCache_null::getnode(FsTxn& txns,const SContext& sctx, st
       }	 
       pos=newpos+1;
    }
-      
+
    string leaf=path.substr(pos);
    if(leaf.empty())
       return n;
@@ -116,6 +117,7 @@ std::auto_ptr<Node> PathCache_hash::getnode(FsTxn& txns, const SContext& sctx, s
       string::size_type pos=0;
       string::size_type newpos=0;
 
+      // Check every parent directory for search permission
       while((newpos=path.find("/",pos))!=string::npos){
 	 if(newpos!=pos){
 	    checkaccess(txns,sctx,cit->second);

@@ -26,10 +26,6 @@ using std::list;
 Medium::EInUse::EInUse():runtime_error("Medium::EInUse") {}
 Medium::ENotFound::ENotFound():runtime_error("Medium::ENotFound") {}
 
-std::auto_ptr<Medium> Medium::defaultmedium(FsTxn& txns){
-   return getmedium(txns,0);
-}
-
 std::auto_ptr<Medium> Medium::getmedium(FsTxn& txns, uint32_t id){
    Register r(txns.media,id);
    Buffer b=r.getattrv("mediumtype");

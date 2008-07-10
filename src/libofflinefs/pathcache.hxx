@@ -31,11 +31,17 @@ class Node;
 
 class PathCache{
    public:
+      // Instance a Node derived object, possibly using the cached data.
+      // It can throw ENotFound, EBadCast<Directory> (if any of the specified parent nodes isn't a directory) 
+      // and EAccess (if any of them doesn't have search permission for the caller).
       virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, std::string path)=0;
+      //Remove all the cached data related to the specified file.
       virtual void invalidate(std::string path)=0;
+      //Remove all the cached permission data related to the specified file.
       virtual void invalidateAccess(std::string path)=0;
 };
 
+// Implementation of PathCache that doesn't actually cache anything.
 class PathCache_null:public PathCache{
    public:
       virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, std::string path);
@@ -43,6 +49,7 @@ class PathCache_null:public PathCache{
       virtual void invalidateAccess(std::string path) {}
 };
 
+// Thread-safe implementation of PathCache by using a hash map.
 class PathCache_hash:public PathCache{
       pthread_mutex_t mutex;
 
@@ -71,10 +78,16 @@ class PathCache_hash:public PathCache{
       Queue queue;
       int nelems;
 
+      // Initialize a new cache entry in the position specified by cit.
+      // If the cache has reached its size limit, remove some files from the bottom of the queue.
       void insert(Cache::iterator cit,uint64_t nodeid);
+      // Move the specified cache entry to the top of the queue.
       void promote(Cache::iterator cit);
+      // Move the cache entry for the specified file to the top of the queue
+      // If it doesn't have a cache entry, create it by using the parent's entry
       Cache::iterator promote(FsTxn& txns,std::string path,Cache::iterator parent,std::string leaf);
       Cache::iterator promoteRoot(FsTxn& txns);
+      //Throw an exception if the specified cache element doesn't have search permission for the caller
       void checkaccess(FsTxn& txns,const SContext& sctx,CElem& ce);
 
    public:

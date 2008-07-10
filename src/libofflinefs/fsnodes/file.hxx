@@ -29,8 +29,6 @@ class File:public Node{
       static std::auto_ptr<File> create(FsTxn& txns,const SContext& sctx, PathCache& pch, std::string path);
 
       virtual void remove();
-
-      std::auto_ptr<Medium> getmedium(std::string phid);
 };
 
 #endif

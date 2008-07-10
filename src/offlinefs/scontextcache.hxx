@@ -25,6 +25,7 @@
 
 #define SCONTEXTCACHE_MAX_ELEMS 40
 
+// Class used to avoid parsing /etc/passwd and /etc/group in each filesystem request
 class SContextCache{
       pthread_mutex_t mutex;
 
@@ -53,13 +54,12 @@ class SContextCache{
 	    Queue::iterator qit;
       };
 
-
-
       Cache cache;
       Queue queue;
       int nelems;
       
       time_t checktime;
+      // Clean the cache if either /etc/passwd or /etc/group have changed
       void uptodate();
    public:
       SContextCache();

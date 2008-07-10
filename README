@@ -89,11 +89,12 @@ MEDIUM TYPES
 The only currently implemented medium types are:
 * directory
  The data is stored somewhere else in the filesystem, at the directory specified by the "directory" medium attribute.
- It is useful if you want a permanent backend to make the filesystem writable (currently, the medium 0 is looked up when trying to create a new file: this is a bug, you have to create the default medium before any other to get this working).
+ It is useful if you want a permanent backend to make the filesystem writable (currently, the medium 0 is looked up by default when trying to create a new file: you can specify a different one in the command line).
  You can use a command like this to create a directory medium:
 $ offmedia --add directory --directory <directory> --unlink_files true 
  The "unlink_files" attribute is used to allow it deleting the underlying files when not needed (this doesn't make sense in a static medium like a CD).
-  
+ Note that <directory> should be an absolute path. 
+ 
 * insert
  Similar to directory, but before any filesystem operation, the presence of the volume will be checked with an user-specified command ("checkcmd" attribute) and in case it isn't present, an user-specified script will be run ("insertscript" attribute) with the "label" attribute and the directory where it shall be mounted as parameters.
 
