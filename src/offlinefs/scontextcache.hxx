@@ -19,7 +19,7 @@
 
 #include <common.hxx>
 #include <scontext.hxx>
-#include <ext/hash_map>
+#include <tr1/unordered_map>
 #include <pthread.h>
 
 
@@ -33,7 +33,7 @@ class SContextCache{
       class CKHash;
       class CElem;
 
-      typedef __gnu_cxx::hash_map<CKey,CElem,CKHash> Cache;
+      typedef std::tr1::unordered_map<CKey,CElem,CKHash> Cache;
       typedef std::list<CKey> Queue;
 
       class CKey{

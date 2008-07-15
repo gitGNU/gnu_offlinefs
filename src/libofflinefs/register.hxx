@@ -14,6 +14,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
+
 template<typename T> Database<T>::Register::EAttrNotFound::EAttrNotFound():runtime_error("Database::Register::EAttrNotFound") {}
 
 template<typename T>

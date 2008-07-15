@@ -21,8 +21,7 @@
 #include <scontext.hxx>
 #include <fsdb.hxx>
 
-#include <ext/hash_map>
-#include <tr1/functional>
+#include <tr1/unordered_map>
 #include <pthread.h>
 
 #define PATHCACHE_MAX_ELEMS 2000
@@ -31,6 +30,7 @@ class Node;
 
 class PathCache{
    public:
+      virtual ~PathCache() {}
       // Instance a Node derived object, possibly using the cached data.
       // It can throw ENotFound, EBadCast<Directory> (if any of the specified parent nodes isn't a directory) 
       // and EAccess (if any of them doesn't have search permission for the caller).
@@ -44,6 +44,7 @@ class PathCache{
 // Implementation of PathCache that doesn't actually cache anything.
 class PathCache_null:public PathCache{
    public:
+      virtual ~PathCache_null() {}
       virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, std::string path);
       virtual void invalidate(std::string path) {}
       virtual void invalidateAccess(std::string path) {}
@@ -55,7 +56,7 @@ class PathCache_hash:public PathCache{
 
       class CElem;
 
-      typedef __gnu_cxx::hash_map<std::string,CElem,std::tr1::hash<std::string> > Cache;
+      typedef std::tr1::unordered_map<std::string,CElem> Cache;
       typedef std::list<std::string> Queue;
 
       class Access{
@@ -92,7 +93,7 @@ class PathCache_hash:public PathCache{
 
    public:
       PathCache_hash();
-      ~PathCache_hash();
+      virtual ~PathCache_hash();
 
       virtual std::auto_ptr<Node> getnode(FsTxn& txns, const SContext& sctx, std::string path);
       virtual void invalidate(std::string path);

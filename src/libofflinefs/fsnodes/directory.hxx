@@ -67,7 +67,9 @@ std::auto_ptr<T> Node::create_(FsTxn& txns,const SContext& sctx, PathCache& pch,
       p.parent->access(sctx,W_OK|X_OK);
       p.parent->addchild(p.leaf,*n);
    }catch(...){
-      n->remove();
+      try{
+	 n->remove();
+      }catch(...){}
       throw;
    }
    return n;

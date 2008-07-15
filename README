@@ -33,7 +33,7 @@ You can find the full GNU General Public License in the file "COPYING".
 INSTALLATION
 
 To build it, you need the following dependencies:
- - Berkeley DB (runtime and headers for C++, it's likely to have a name like libdb4.X++-dev in your distribution... version 4.6 and 4.5 have been tested. It's not known if other versions work)
+ - Berkeley DB (runtime and headers for C++, it's likely to have a name like libdb4.X++-dev in your distribution... versions 4.7-4.5 have been tested. It's not known if other versions work)
  - FUSE (runtime and headers)
  - Extended attributes library (It's likely to be called attr-dev, libattr-dev or something similar)
  - Standard compilation tools and libraries (g++, make, etc)

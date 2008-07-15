@@ -126,7 +126,7 @@ int addf(uint32_t id,string path,string refpath,string dbroot){
       f->setattr<time_t>("offlinefs.atime",st.st_atime);
       f->setattr<time_t>("offlinefs.mtime",st.st_mtime);
       f->setattr<time_t>("offlinefs.ctime",time(NULL));
-      f->setattr<mode_t>("offlinefs.mode",st.st_mode&(~S_IFMT)|S_IFREG);
+      f->setattr<mode_t>("offlinefs.mode",(st.st_mode&(~S_IFMT))|S_IFREG);
       f->setattr<uid_t>("offlinefs.uid",st.st_uid);
       f->setattr<uid_t>("offlinefs.gid",st.st_gid);
       f->setattr<off_t>("offlinefs.size",st.st_size);

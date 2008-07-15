@@ -134,9 +134,6 @@ int FS::mknod(const char* path , mode_t mode, dev_t dev){
       FsTxn txns(dbs);
       SContext sctx=userctx();
       auto_ptr<Node> n=Node::create(txns,sctx,pcache,string(path));
-      n->setattr<time_t>("offlinefs.atime",time(NULL));
-      n->setattr<time_t>("offlinefs.mtime",time(NULL));
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
       n->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
       n->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
       n->setattr<mode_t>("offlinefs.mode",mode);
@@ -153,9 +150,6 @@ int FS::mkdir(const char* path, mode_t mode){
       FsTxn txns(dbs);
       SContext sctx=userctx();
       auto_ptr<Directory> n=Directory::create(txns,sctx,pcache,string(path));
-      n->setattr<time_t>("offlinefs.atime",time(NULL));
-      n->setattr<time_t>("offlinefs.mtime",time(NULL));
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
       n->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
       n->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
       n->setattr<mode_t>("offlinefs.mode",S_IFDIR|mode);
@@ -202,9 +196,6 @@ int FS::symlink(const char* oldpath, const char* newpath){
       FsTxn txns(dbs);
       SContext sctx=userctx();
       auto_ptr<Symlink> sl=Symlink::create(txns,sctx,pcache,newpath);
-      sl->setattr<time_t>("offlinefs.atime",time(NULL));
-      sl->setattr<time_t>("offlinefs.mtime",time(NULL));
-      sl->setattr<time_t>("offlinefs.ctime",time(NULL));
       sl->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
       sl->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
       sl->setattrv("offlinefs.symlink",Buffer(oldpath,strlen(oldpath)));
@@ -252,7 +243,7 @@ int FS::chmod(const char* path, mode_t mode){
 	    mode&=~S_ISGID;
       }
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
-      n->setattr<mode_t>("offlinefs.mode",mode&(~S_IFMT)|n->getattr<mode_t>("offlinefs.mode")&S_IFMT);
+      n->setattr<mode_t>("offlinefs.mode",(mode&(~S_IFMT))|(n->getattr<mode_t>("offlinefs.mode")&S_IFMT));
       pcache.invalidateAccess(path);
    }catch(exception& e){
       return errcode(e);

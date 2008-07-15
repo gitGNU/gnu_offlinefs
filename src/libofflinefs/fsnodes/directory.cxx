@@ -74,7 +74,9 @@ auto_ptr<Directory> Directory::create(FsTxn& txns,const SContext& sctx,PathCache
       p.parent->addchild(p.leaf,*n);
       n->addchild("..",*p.parent);
    }catch(...){
-      n->remove();
+      try{
+	 n->remove();
+      }catch(...){}
       throw;
    }
    return n;

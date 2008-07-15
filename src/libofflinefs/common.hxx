@@ -34,6 +34,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <utility>
+#include <typeinfo>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef HAVE_DB_CXX_H
 #include <db_cxx.h>

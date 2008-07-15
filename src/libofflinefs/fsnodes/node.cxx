@@ -35,13 +35,10 @@ auto_ptr<Node> Node::create(FsTxn& txns){
    auto_ptr<Node> n(new Node(txns,txns.dbs.nodes.createregister(txns.nodes)));
    n->setattr<dev_t>("offlinefs.dev",0);
    n->setattr<nlink_t>("offlinefs.nlink",0);
-   n->setattr<mode_t>("offlinefs.mode",0);
-   n->setattr<uid_t>("offlinefs.uid",0);
-   n->setattr<gid_t>("offlinefs.gid",0);
    n->setattr<off_t>("offlinefs.size",0);
-   n->setattr<time_t>("offlinefs.atime",0);
-   n->setattr<time_t>("offlinefs.mtime",0);
-   n->setattr<time_t>("offlinefs.ctime",0);
+   n->setattr<time_t>("offlinefs.atime",time(NULL));
+   n->setattr<time_t>("offlinefs.mtime",time(NULL));
+   n->setattr<time_t>("offlinefs.ctime",time(NULL));
    return n;
 }
 
