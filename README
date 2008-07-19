@@ -38,6 +38,7 @@ To build it, you need the following dependencies:
  - Extended attributes library (It's likely to be called attr-dev, libattr-dev or something similar)
  - Standard compilation tools and libraries (g++, make, etc)
  - kdialog (It's used to show messages in an X display: you could use any similar program by editing the corresponding line in the insertion script)
+ - The boost::program_options library and headers (libboost-program-options-dev in debian)
 
 Then you would just run the following commands at this directory:
 $ ./configure
