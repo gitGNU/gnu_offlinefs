@@ -1,4 +1,5 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src/libofflinefs
+dist_bin_SCRIPTS = offimport_cd.sh
 bin_PROGRAMS = offmedia offimport
 offmedia_SOURCES =  offmedia.cxx
 offmedia_LDADD = $(top_srcdir)/src/libofflinefs/libofflinefs.la

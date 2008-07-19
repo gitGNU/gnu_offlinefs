@@ -295,8 +295,12 @@ int main(int argc, char** argv){
 	    throw runtime_error("Error parsing input: no valid objects specified");
 
 
-	 if(!m.link.empty())
-	    n->setattrv("offlinefs.symlink",Buffer(m.link.c_str(),m.link.size()));
+	 if(!m.link.empty()){
+	    if(!nodetype)
+	       nodetype=n->getattr<mode_t>("offlinefs.mode")&S_IFMT;
+	    if(nodetype==S_IFLNK)
+	       n->setattrv("offlinefs.symlink",Buffer(m.link.c_str(),m.link.size()));
+	 }
 
 	 if(!m.numgroup.empty()){
 	    n->setattr<gid_t>("offlinefs.gid",parse<gid_t>(m.numgroup));

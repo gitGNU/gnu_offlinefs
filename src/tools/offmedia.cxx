@@ -42,12 +42,10 @@ int usage(std::string prog){
    cerr << prog << " --list [dbroot]\n";
    cerr << prog << " --rm <id> [dbroot]\n";
    cerr << prog << " --mod <id> --<attr0> <value0> --<attr1> <value1> ... [dbroot]\n";
-   cerr << prog << " --addfile <id> <path> [refpath] [dbroot]\n";
    cerr << "\t--add: Add medium of type <type> while setting specified attributes to the specified values.\n";
    cerr << "\t--list: List existing media.\n";
    cerr << "\t--rm: Remove specified medium.\n";
    cerr << "\t--mod: Modify specified attributes on medium <id>.\n";
-   cerr << "\t--addfile: Create file <path> (relative to mount point) by cloning the metadata from [refpath], and add it to medium <id>.\n";
    cerr << "[dbroot] defaults to ~/.offlinefs/\n";
    return 1;
 }
@@ -100,37 +98,6 @@ int modm(uint32_t id,attrlist attrs, string dbroot){
    auto_ptr<Medium> m=Medium::getmedium(txns,id);
    for(attrlist::iterator it=attrs.begin();it!=attrs.end();it++)
       m->setattrv(it->first,Buffer(it->second.c_str(),it->second.size()));
-   txns.commit();
-   return 0;
-}
-
-int addf(uint32_t id,string path,string refpath,string dbroot){
-   FsDb dbs(dbroot);
-   dbs.open();
-   FsTxn txns(dbs);
-   PathCache_null pcache;
-   auto_ptr<File> f=File::create(txns,SContext(getuid(),getgid()),pcache,"/"+path);
-   auto_ptr<Medium> m=Medium::getmedium(txns,id);
-   Buffer b=m->getattrv("directory");
-   string basedir(b.data,b.size);
-   basedir=basedir.substr(0,basedir.find_last_not_of("/")+1);
-   if(refpath.find(basedir)!=0){
-      cerr << "Error: cannot recognize refpath as a subdirectory of the specified medium." << endl;
-      txns.abort();
-      return 1;
-   }
-   m->addfile(*f,refpath.substr(basedir.size()));
-   if(!refpath.empty()){
-      struct stat st;
-      stat(refpath.c_str(),&st);
-      f->setattr<time_t>("offlinefs.atime",st.st_atime);
-      f->setattr<time_t>("offlinefs.mtime",st.st_mtime);
-      f->setattr<time_t>("offlinefs.ctime",time(NULL));
-      f->setattr<mode_t>("offlinefs.mode",(st.st_mode&(~S_IFMT))|S_IFREG);
-      f->setattr<uid_t>("offlinefs.uid",st.st_uid);
-      f->setattr<uid_t>("offlinefs.gid",st.st_gid);
-      f->setattr<off_t>("offlinefs.size",st.st_size);
-   }
    txns.commit();
    return 0;
 }
@@ -239,25 +206,6 @@ int main(int argc,char* argv[]){
 	 }
 	    
 	 return modm(id,attrs,dbroot);
-
-
-      }else if(string(argv[1])=="--addfile"){
- 	 if(argc<4||argc>6){
-	    cerr << "Wrong number of arguments" << endl;
-	    return usage(argv[0]);
-	 }
-	 istringstream is(argv[2]);
-	 is.exceptions(std::ios::failbit);
-	 uint32_t id;
-	 is >> id;
-	 string path(argv[3]);
-	 string refpath;
-	 if(argc>4)
-	    refpath=string(argv[4]);
-	 if(argc>5)
-	    dbroot=string(argv[5]);
-
-	 return addf(id,path,refpath,dbroot);
 
 
       }else{

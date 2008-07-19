@@ -4,7 +4,7 @@ INTRODUCTION
 offlinefs is a fuse-based filesystem initially intended to join a large collection of ejectable media (like CDs and DVDs) in a single writable filesystem where the files could still be searched, moved around, reorganized in directories, etc.
 If an user tries to open a file, he's asked to insert the volume where that file's contents are stored. The data is then transparently read from the real medium.
 
-If you've got any problem, questions... contact me at <currojerez@gmail.com>.
+If you've got any problem, questions, contributions... contact me at <currojerez@gmail.com>.
 
 
 INTERNALS
@@ -72,7 +72,7 @@ $ fusermount -u <mount point>
 
 MEDIA MANAGEMENT
 
-You can modify the media database with the "offmedia" command. It's kind of a low-level tool, and you will rarely have to use it: generally, you would import a whole filesystem tree with the "offimport.sh" script: It creates a new entry in the media database (an "insert" type medium). Then it recursively scans the specified directory adding each file and each directory to the filesystem and associating them with the newly created medium.
+You can modify the media database with the "offmedia" command. It's kind of a low-level tool, and you will rarely have to use it: generally, you would import a whole filesystem tree with the "offimport_cd.sh" script: It creates a new entry in the media database (an "insert" type medium). Then it recursively scans the specified directory adding each file and each directory to the filesystem and associating them with the newly created medium.
 
 You could use it like this:
 $ offimport.sh -i <directory> -l <label>
@@ -83,6 +83,7 @@ When trying to access a file, you will be asked to insert the volume with label 
 To get a dump of the media DB, you can use the command:
 $ offmedia --list [db root]
 
+offimport_cd.sh internally uses the offimport program, which reproduces a directory listing ( e.g. generated with find) in the database.
 
 MEDIUM TYPES
 

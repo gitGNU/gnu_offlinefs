@@ -16,42 +16,37 @@
 #     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 usage(){
-    echo "usage: offimport.sh -i <cdroot> -l <label> [-s <insertion script>] [-o <offroot>] [-d <dbroot>]"
-    echo "Import a directory tree (<cdroot>) into the offlinefs mounted at <offroot> and with database at <dbroot>. <insert script> will get called when trying to access any of the imported files."
+    echo "usage: offimport_cd.sh -i <cdroot> -l <label> [-s <insertion script>] [-b <dbroot>] [-p <prefix>]"
+    echo "Import a directory tree (<cdroot>) into the offlinefs with database at <dbroot>, prefixing each path with <prefix>. <insert script> will get called when trying to access any of the imported files."
     exit 1
 }
 
+dbroot="$HOME/.offlinefs" 
+insert="/usr/local/etc/offlinefs/insert"
+cdroot=""
+label=""
+prefix="/"
 
-while getopts l:i:o:d:s: opt; do
+while getopts l:i:b:s: opt; do
     case $opt in
 	l) label=$OPTARG;;
 	i) cdroot=$OPTARG;;
 	s) insert=$OPTARG;;
-	o) offroot=$OPTARG;;
 	d) dbroot=$OPTARG;;
+	p) prefix=$OPTARG;;
     esac
 done
 [ $((OPTIND-1)) != $# ] && usage
 
-[ -z $dbroot ] && dbroot="$HOME/.offlinefs" 
-[ -z $offroot ] && offroot=`mount |grep offlinefs |cut -d' ' -f3 |head -n 1` 
-[ -z $insert ] && insert="/usr/local/etc/offlinefs/insert"
 [ -z $label ] && usage
 [ -z $cdroot ] && usage
+[ ${cdroot:0:1} == "/" ] || cdroot=`pwd`"/$cdroot"
 
 echo "cdroot: $cdroot"
 echo "label: $label"
-echo "offroot: $offroot"
 echo "dbroot: $dbroot"
 echo "insert script: $insert"
-echo "Press return to proceed..."
-read
-echo "Creating directory tree..."
-find $cdroot -type d -printf "%P\n" |while read dir; do
-    if [ -n "$dir" ];then
-	mkdir "$offroot/$dir" &>/dev/null
-    fi
-done
+echo "prefix: $prefix"
 
 echo "Adding medium to the database..."
 fingerprint=`stat -f -c %a%b%c%d%f%i%l%s%S%t $cdroot`
@@ -59,8 +54,5 @@ offmedia --add insert --directory "$cdroot" --label "$label" --checkcmd "test $f
 mid=`offmedia --list $dbroot |grep -a "#MEDIUM: " |sed "s/#MEDIUM: //" |tail -1 `
 
 echo "Adding files to the database..."
-find $cdroot -type f -printf "%P\n"| while read file; do
-    source="$cdroot/$file"
-    offmedia --addfile "$mid" "$file" "$source" "$dbroot"
-done
+find $cdroot -printf '%U %G %m %y %A@ %T@ %s %P //// %l\n' |awk 'NR!=1 {print $0}' |offimport -c -M $mid -b "$dbroot" -p "$prefix" -f  '%U %G %m %y %A@ %T@ %s %P //// %l'
 echo "Done"

@@ -8,7 +8,7 @@
 export DISPLAY=:0.0
 [ -n "$set_user" ] && export XAUTHORITY=/home/$set_user/.Xauthority 
 
-DIALOG="/usr/kde/3.5/bin/kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
+DIALOG="kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
 MOUNT="mount $2"
 if [ -n "$set_user" ]; then 
     su -c "$DIALOG && $MOUNT" $set_user
