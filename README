@@ -5,7 +5,7 @@ offlinefs is a fuse-based filesystem initially intended to join a large collecti
 If an user tries to open a file, he's asked to insert the volume where that file's contents are stored. The data is then transparently read from the real medium.
 
 If you've got any problem, questions, contributions... contact me at <currojerez@gmail.com>.
-The source code is currently maintained at: http://delcorp.org/~curro/offlinefs/
+The source code is currently maintained at: http://savannah.nongnu.org/projects/offlinefs/
 
 
 INTERNALS
