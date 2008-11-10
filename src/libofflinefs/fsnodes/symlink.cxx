@@ -30,7 +30,3 @@ auto_ptr<Symlink> Symlink::create(FsTxn& txns){
    n->setattrv("offlinefs.symlink",Buffer());
    return n;
 }
-
-std::auto_ptr<Symlink> Symlink::create(FsTxn& txns,const SContext& sctx,PathCache& pch,std::string path){
-   return Node::create_<Symlink>(txns,sctx,pch,path);
-}

@@ -16,12 +16,13 @@
 #     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 usage(){
-    echo "usage: offimport_cd.sh -i <cdroot> -l <label> [-s <insertion script>] [-b <dbroot>] [-p <prefix>]"
+    echo "usage: offimport_cd.sh -i <cdroot> -l <label> [-s <insertion script>] [-b <dbroot>] [-p <prefix>] [-f <config file>]"
     echo "Import a directory tree (<cdroot>) into the offlinefs with database at <dbroot>, prefixing each path with <prefix>. <insert script> will get called when trying to access any of the imported files."
     exit 1
 }
 
 dbroot="$HOME/.offlinefs" 
+config="$HOME/.offlinefs/offlinefs.conf"
 insert="/usr/local/etc/offlinefs/insert"
 cdroot=""
 label=""

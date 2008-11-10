@@ -19,53 +19,24 @@
 #include "insert.hxx"
 #include <stdlib.h>
 
-using std::auto_ptr;
 using std::string;
 using std::list;
+using std::tr1::shared_ptr;
 
-Medium::EInUse::EInUse():runtime_error("Medium::EInUse") {}
-Medium::ENotFound::ENotFound():runtime_error("Medium::ENotFound") {}
+std::auto_ptr<Medium> Medium::getmedium(libconfig::Setting& conf){
+   string mediumtype;
 
-std::auto_ptr<Medium> Medium::getmedium(FsTxn& txns, uint32_t id){
-   Register r(txns.media,id);
-   Buffer b=r.getattrv("mediumtype");
-   string mediumtype(b.data,b.size);
-   if(mediumtype=="directory")
-      return std::auto_ptr<Medium>(new Medium_directory(txns,id));
-   else if(mediumtype=="insert")
-      return std::auto_ptr<Medium>(new Medium_insert(txns,id));
-   throw ENotFound();
-}
-      
-std::auto_ptr<Medium> Medium::create(FsTxn& txns, std::string type){
-   if(type=="directory")
-      return auto_ptr<Medium>(Medium_directory::create(txns));
-   else if(type=="insert")
-      return auto_ptr<Medium>(Medium_insert::create(txns));
-   throw ENotFound();
-}
-      
-void Medium::remove(){
-   if(getattr<uint32_t>("refcount"))
-      throw EInUse();
-   Register::remove();
-}
-
-Medium::Stats Medium::collectstats(FsTxn& txns){
-   Stats st;
-   list<uint32_t> rs=txns.dbs.media.listregisters(txns.media);
-   for(list<uint32_t>::iterator it=rs.begin();it!=rs.end();it++){
-      Stats st_=getmedium(txns,*it)->getstats();
-      st.blocks+=st_.blocks;
-      st.freeblocks+=st_.freeblocks;
+   if(!conf.lookupValue("type",mediumtype)){
+      std::ostringstream os;
+      os << "Medium::getmedium: Error parsing config file after line " 
+	 << conf.getSourceLine() << ": \"type\" parameter required.";
+      throw std::runtime_error(os.str());
    }
-   return st;
-}
 
-void Medium::addfile(File& f,string phid){
-   setattr<uint32_t>("refcount",getattr<uint32_t>("refcount")+1);
-}
+   if(mediumtype=="directory")
+      return std::auto_ptr<Medium>(new Medium_directory(conf));
+   else if(mediumtype=="insert")
+      return std::auto_ptr<Medium>(new Medium_insert(conf));
 
-void Medium::delfile(File& f){
-   setattr<uint32_t>("refcount",getattr<uint32_t>("refcount")-1);
+   throw std::runtime_error(string("Medium::getmedium: Unknown medium type \"") + mediumtype + string("\"."));
 }

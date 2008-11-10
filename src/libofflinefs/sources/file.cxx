@@ -18,7 +18,7 @@
 
 using std::string;
 
-Source_file::Source_file(FsTxn& txns,uint64_t fileid,std::string path,int mode):Source(txns,fileid,mode),fd(-1){
+Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1){
    if((mode&O_ACCMODE)==O_RDONLY){
       fd=open(path.c_str(),mode);
    }else{

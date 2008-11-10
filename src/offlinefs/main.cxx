@@ -23,25 +23,22 @@
 #include <sstream>
 
 struct Params{
+      std::string dbroot;
+      std::string dbgroup;
+      std::string dbumask;
+      std::string defmedium;
+      std::string config;
+};
+
+struct CmdParams{
       const char* dbroot;
       const char* dbgroup;
       const char* dbumask;
       const char* defmedium;
+      const char* config;
       bool help;
       bool rebuild;
-} params={NULL,NULL,NULL,NULL,false,false};
-
-struct ParsedParams{
-      ParsedParams():defmedium(0) {
-	 if(getenv("HOME")){
-	    dbroot=std::string(getenv("HOME"))+"/.offlinefs/";
-	 }
-      }
-      std::string dbroot;
-      uint32_t defmedium;
-};
-
-std::string dbroot_default;
+} cmdparams={NULL,NULL,NULL,NULL,NULL,false,false};
 
 enum{
    KEY_VERSION,
@@ -50,10 +47,11 @@ enum{
 };
 
 struct fuse_opt opts[] ={
-   {"dbroot=%s",offsetof(Params,dbroot),0},
-   {"dbgroup=%s",offsetof(Params,dbgroup),0},
-   {"dbumask=%s",offsetof(Params,dbumask),0},
-   {"defmedium=%s",offsetof(Params,defmedium),0},
+   {"dbroot=%s",offsetof(CmdParams,dbroot),0},
+   {"dbgroup=%s",offsetof(CmdParams,dbgroup),0},
+   {"dbumask=%s",offsetof(CmdParams,dbumask),0},
+   {"defmedium=%s",offsetof(CmdParams,defmedium),0},
+   {"config=%s",offsetof(CmdParams,config),0},
    FUSE_OPT_KEY("-V", KEY_VERSION),
    FUSE_OPT_KEY("--version", KEY_VERSION),
    FUSE_OPT_KEY("-h", KEY_HELP),
@@ -72,6 +70,7 @@ void usage(){
    std::cerr << "\t-o dbgroup=<dbroot>\tDatabase group\n";
    std::cerr << "\t-o dbumask=<dbroot>\tDatabase umask (octal)\n";
    std::cerr << "\t-o defmedium=<medium id> Default medium a file is created in\n";
+   std::cerr << "\t-o config=<path>\tConfiguration file\n";
    std::cerr << "\t--rebuilddb\t\tRebuild DB mode\n";
    std::cerr << std::endl;
 }
@@ -98,23 +97,23 @@ void version(){
 int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
    if(key==KEY_VERSION){
       version();      
-      ((Params*)data)->help=true;
+      ((CmdParams*)data)->help=true;
       return 1;
    }else if(key==KEY_HELP){
       usage();
       fuse_opt_add_arg(outargs,"-ho");
-      ((Params*)data)->help=true;
+      ((CmdParams*)data)->help=true;
       return 0;
    }else if(key==KEY_REBUILDDB){
-      ((Params*)data)->rebuild=true;
+      ((CmdParams*)data)->rebuild=true;
       return 0;
    }else
       return 1;
 }
 
 void* init_(fuse_conn_info* conn){
-   ParsedParams* p=(ParsedParams*)fuse_get_context()->private_data;
-   return new FS(p->dbroot,p->defmedium);
+   Params* p=(Params*)fuse_get_context()->private_data;
+   return new FS(p->dbroot,p->defmedium,p->config);
 }
 
 void destroy_(void *userdata){
@@ -226,48 +225,112 @@ int access_(const char* path, int mode){
 }
 
 int main(int argc, char** argv){
-  fuse_operations ops;
+   fuse_operations ops;
 
-  memset(&ops,0,sizeof(fuse_operations));
-  ops.init=init_;
-  ops.destroy=destroy_;
-  ops.getattr=getattr_;
-  ops.readdir=readdir_;
-  ops.readlink=readlink_;
-  ops.mknod=mknod_;
-  ops.mkdir=mkdir_;
-  ops.unlink=unlink_;
-  ops.rmdir=rmdir_;
-  ops.symlink=symlink_;
-  ops.rename=rename_;
-  ops.link=link_;
-  ops.chmod=chmod_;
-  ops.chown=chown_;
-  ops.truncate=truncate_;
-  ops.open=open_;
-  ops.read=read_;
-  ops.write=write_;
-  ops.statfs=statfs_;
-  ops.flush=flush_;
-  ops.release=release_;
-  ops.fsync=fsync_;
-  ops.setxattr=setxattr_;
-  ops.getxattr=getxattr_;
-  ops.listxattr=listxattr_;
-  ops.removexattr=removexattr_;
-  ops.utimens=utimens_;
-  ops.access=access_;
+   memset(&ops,0,sizeof(fuse_operations));
+   ops.init=init_;
+   ops.destroy=destroy_;
+   ops.getattr=getattr_;
+   ops.readdir=readdir_;
+   ops.readlink=readlink_;
+   ops.mknod=mknod_;
+   ops.mkdir=mkdir_;
+   ops.unlink=unlink_;
+   ops.rmdir=rmdir_;
+   ops.symlink=symlink_;
+   ops.rename=rename_;
+   ops.link=link_;
+   ops.chmod=chmod_;
+   ops.chown=chown_;
+   ops.truncate=truncate_;
+   ops.open=open_;
+   ops.read=read_;
+   ops.write=write_;
+   ops.statfs=statfs_;
+   ops.flush=flush_;
+   ops.release=release_;
+   ops.fsync=fsync_;
+   ops.setxattr=setxattr_;
+   ops.getxattr=getxattr_;
+   ops.listxattr=listxattr_;
+   ops.removexattr=removexattr_;
+   ops.utimens=utimens_;
+   ops.access=access_;
 
-  struct fuse_args args = FUSE_ARGS_INIT(argc,argv);
+   struct fuse_args args = FUSE_ARGS_INIT(argc,argv);
+   
+   Params params;
 
-  ParsedParams pparams;
+   // Parse the command line
+   if(fuse_opt_parse(&args,&cmdparams,opts,opt_proc)){
+      std::cerr << "Error parsing command line" << std::endl;
+      return -1;
+   }
 
-  if(fuse_opt_parse(&args,&params,opts,opt_proc)){
-     std::cerr << "Error parsing command line" << std::endl;
-     return -1;
-  }
-   if(params.dbgroup){
-      struct group* gr=getgrnam(params.dbgroup);
+   // Default parameters
+   if(getenv("HOME")){
+      params.dbroot=std::string(getenv("HOME"))+"/.offlinefs/";
+      params.config=std::string(getenv("HOME"))+"/.offlinefs/offlinefs.conf";
+   }
+
+   // Parameters from config file
+   if(cmdparams.config)
+      params.config = cmdparams.config;
+
+   libconfig::Config conf;
+   try{
+      conf.readFile(params.config.c_str());
+
+      if(conf.exists("dbroot")){
+	 if(!conf.lookupValue("dbroot",params.dbroot)){
+	    std::cerr << "Error parsing configuration file option \"dbroot\": String expected.\n";
+	    return 1;
+	 }
+      }
+
+      if(conf.exists("dbgroup")){
+	 if(!conf.lookupValue("dbgroup",params.dbgroup)){
+	    std::cerr << "Error parsing configuration file option \"dbgroup\": String expected.\n";
+	    return 1;
+	 }
+      }
+
+      if(conf.exists("dbumask")){
+	 if(!conf.lookupValue("dbumask",params.dbumask)){
+	    std::cerr << "Error parsing configuration file option \"dbumask\": String expected.\n";
+	    return 1;
+	 }
+      }
+
+      if(conf.exists("defmedium")){
+	 if(!conf.lookupValue("defmedium",params.defmedium)){
+	    std::cerr << "Error parsing configuration file option \"defmedium\": String expected.\n";
+	    return 1;
+	 }
+      }
+   }catch(libconfig::FileIOException& e){
+   }catch(libconfig::ParseException& e){
+      std::cerr << "Error parsing the configuration file (line " << e.getLine() << "): "
+		<< e.getError() << "\n";
+      return 1;
+   }
+
+   // Parameters from command line
+   if(cmdparams.dbroot)
+      params.dbroot = cmdparams.dbroot;
+
+   if(cmdparams.dbgroup)
+      params.dbgroup = cmdparams.dbgroup;
+
+   if(cmdparams.dbumask)
+      params.dbumask = cmdparams.dbumask;
+
+   if(cmdparams.defmedium)
+      params.defmedium = cmdparams.defmedium;
+
+   // Apply the selected parameters
+   if(!params.dbgroup.empty()){
+      struct group* gr=getgrnam(cmdparams.dbgroup);
       if(!gr){
 	 std::cerr << "Specified dbgroup doesn't exist.\n";
 	 return 1;
@@ -277,51 +340,39 @@ int main(int argc, char** argv){
 	 return 1;
       }
    }
-   if(params.dbumask){
-      std::istringstream is(params.dbumask);
-      is.setf(std::ios::oct);
+
+   if(!params.dbumask.empty()){
       mode_t dbumask;
+      std::istringstream is(params.dbumask);
+
+      is.setf(std::ios::oct);
       is >> dbumask;
       if(!is){
 	 std::cerr << "Error parsing dbumask.\n";
 	 return 1;
       }
+
       umask(dbumask);
    }
 
-   if(params.defmedium){
-      std::istringstream is(params.defmedium);
-      is >> pparams.defmedium;
-      if(!is){
-	 std::cerr << "Error parsing defmedium.\n";
-	 return 1;
+   if(!cmdparams.help){
+      if(params.dbroot.empty()){
+	 std::cerr << "No database root found!\n";
+	 usage();
+	 return -1;
+      }
+      
+      if(cmdparams.rebuild){
+	 std::cerr << "Rebuilding database at " << params.dbroot << " ...\n";
+	 FsDb(params.dbroot,params.config).rebuild();
+	 std::cerr << "Done.\n";
+	 return 0;
       }
    }
-
-  if(!params.help){
-     if(params.dbroot){
-	if(params.dbroot[0]!='/'){
-	   std::cerr << "Error: expecting absolute path for dbroot.\n";
-	   return -1;
-	}
-	pparams.dbroot=std::string(params.dbroot);
-     }else if(pparams.dbroot.empty()){
-	std::cerr << "No database root found!\n";
-	usage();
-	return -1;
-     }
-
-     if(params.rebuild){
-	std::cerr << "Rebuilding database at " << pparams.dbroot << " ...\n";
-	FsDb(pparams.dbroot).rebuild();
-	std::cerr << "Done.\n";
-	return 0;
-     }
-  }
-
-  int err= fuse_main(args.argc, args.argv,&ops,&pparams);
-
-  fuse_opt_free_args(&args);
-
-  return err;
+   
+   int err = fuse_main(args.argc, args.argv,&ops,&params);
+   
+   fuse_opt_free_args(&args);
+   
+   return err;
 }

@@ -22,6 +22,13 @@
 
 template<typename T> class FParser;
 
+// Format string token specification. If fmapparams is non-NULL, it
+// represents a "parametrized" format, that is, it requires a
+// parameter in the format string like: "%tok{parameter}" and it can
+// be repeated several times in the format string: each match will be
+// inserted in the unordered_map pointed by fmapparams, with the
+// parameter name as key.  Otherwise, it will match "%tok", and the
+// string pointed by fmapval will be set to the matched text
 template<typename T>
 class FSpec{
    public:
@@ -33,6 +40,7 @@ class FSpec{
       std::tr1::unordered_map<std::string,std::string> (T::*fmapparams);
 };
 
+// Formatted string parser
 template<typename T>
 class Format{
       friend class FParser<T>;
@@ -43,14 +51,19 @@ class Format{
       };
       std::list<DTok> toks;
    public:
+      // Fill in fmap from the specified string
       void match(T& fmap,std::string text);
 };
 
+// Formatted string parser generator. It has to be filled with a list
+// of valid token specifications
 template<typename T>
 class FParser{
       std::list<FSpec<T> > toks;
    public:
       FParser& add(const FSpec<T>& fspec) {toks.push_back(fspec); return *this;}
+
+      // Generate a formatted string parser from a format string 
       Format<T> parse(std::string formatstr);
 };
 
@@ -61,11 +74,13 @@ void Format<T>::match(T& fmap,std::string text){
    for(typename std::list<DTok>::iterator it=toks.begin();it!=toks.end();++it){
       std::string::size_type pos1=text.find(it->delimiter,pos0);
       if(pos1==std::string::npos)
-	 throw std::runtime_error("Error parsing input: delimiter not found");
+	 throw std::runtime_error("Error parsing input: It doesn't match the format string.");
+
       if(it->fspec.fmapparams)
 	 (fmap.*(it->fspec.fmapparams)).insert(std::pair<std::string,std::string>(it->param,text.substr(pos0,pos1-pos0)));
       if(it->fspec.fmapval)
 	 fmap.*(it->fspec.fmapval)=text.substr(pos0,pos1-pos0);
+
       pos0=pos1+it->delimiter.size();
    }
 }
@@ -83,19 +98,24 @@ Format<T> FParser<T>::parse(std::string formatstr){
       if(nextf==std::string::npos)
 	 break;
       pos=nextf+1;
+
+      // Interpret "%%" as "%"
       if(formatstr[pos]=='%'){
 	 dtok.delimiter+="%";
 	 pos++;
 	 continue;
       }
 
+      // Push in the last token
       format.toks.push_back(dtok);
       dtok=typename Format<T>::DTok();
  
+      // Compare each known token with the rest of the string
       typename std::list<FSpec<T> >::iterator it;
       for(it=toks.begin();it!=toks.end();++it){
 	 std::string::size_type ssize=it->tok.size();
 	 if(formatstr.substr(pos,ssize)==it->tok){
+	    // Read the parameter, if it is needed
 	    if(it->fmapparams){
 	       if(formatstr[pos+ssize]!='{')
 		  throw std::runtime_error("Error: format \""+it->tok+"\" requires a parameter.");

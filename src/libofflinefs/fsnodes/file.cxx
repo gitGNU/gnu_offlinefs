@@ -27,13 +27,10 @@ auto_ptr<File> File::create(FsTxn& txns){
    return n;
 }
 
-std::auto_ptr<File> File::create(FsTxn& txns,const SContext& sctx,PathCache& pch,std::string path){
-   return Node::create_<File>(txns,sctx,pch,path);
-}
-
 void File::remove(){
    try{
-      Medium::getmedium(txns,getattr<uint32_t>("offlinefs.mediumid"))->delfile(*this);
+      Buffer mediumid = getattrv("offlinefs.mediumid");
+      txns.dbs.mcache.getmedium(string(mediumid.data, mediumid.size))->delfile(*this);
    }catch(...){}
    Node::remove();
 }

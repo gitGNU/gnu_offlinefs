@@ -21,14 +21,20 @@ using std::auto_ptr;
 using std::string;
 using std::list;
 
-std::auto_ptr<Medium_insert> Medium_insert::create(FsTxn& txns){
-   auto_ptr<Medium_directory> r=Medium_directory::create(txns);
-   string mediumtype("insert");
-   r->setattrv("mediumtype",Buffer(mediumtype.c_str(),mediumtype.size()));
-   r->setattrv("label",Buffer(NULL,0));
-   r->setattrv("checkcmd",Buffer(NULL,0));
-   r->setattrv("insertscript",Buffer(NULL,0));
-   return auto_ptr<Medium_insert>(new Medium_insert(txns,r->getid()));
+Medium_insert::Medium_insert(libconfig::Setting& conf): Medium_directory(conf){
+   if(!conf.lookupValue("checkcmd",checkcmd)){
+      std::ostringstream os;
+      os << "Medium_insert::Medium_insert: Error parsing config file after line " 
+	 << conf.getSourceLine() << ": \"checkcmd\" parameter required.";
+      throw std::runtime_error(os.str());
+   }
+
+   if(!conf.lookupValue("insertcmd",insertcmd)){
+      std::ostringstream os;
+      os << "Medium_insert::Medium_insert: Error parsing config file after line " 
+	 << conf.getSourceLine() << ": \"insertcmd\" parameter required.";
+      throw std::runtime_error(os.str());
+   }
 }
 
 std::auto_ptr<Source> Medium_insert::getsource(File& f,int mode){
@@ -51,16 +57,13 @@ void Medium_insert::addfile(File& f,string phid){
 }
 
 void Medium_insert::delfile(File& f){
-   Buffer b=getattrv("unlink_files");
-   if(string(b.data,b.size)=="true")
+   if(unlink_files)
       insert();
    Medium_directory::delfile(f);
 }
 
 bool Medium_insert::check(){
-   Buffer b=getattrv("checkcmd");
-   string command(b.data,b.size);
-   int err=system(command.c_str());
+   int err=system(checkcmd.c_str());
    if(err==-1)
       throw std::runtime_error("Medium_insert::check: error calling system.");
    return (WEXITSTATUS(err)==0);
@@ -68,19 +71,12 @@ bool Medium_insert::check(){
 
 void Medium_insert::insert(){
    if(!check()){
-      Buffer b=getattrv("label");
-      string label(b.data,b.size);
-      b=getattrv("directory");
-      string directory(b.data,b.size);
-      b=getattrv("insertscript");
-      string insertscript(b.data,b.size);
-      string insertcmd="sh "+insertscript+" \""+label+"\" \""+directory+"\"";
       int err=system(insertcmd.c_str());
       if(err==-1)
 	 throw std::runtime_error("Medium_insert::insert: error calling system.");
       if(WEXITSTATUS(err))
 	 throw std::runtime_error("Medium_insert::insert: error inserting the volume.");
       if(!check())
-	 throw std::runtime_error("Medium_insert::insert: check failed.");
+	 throw std::runtime_error("Medium_insert::insert: checkcmd failed.");
    }
 }

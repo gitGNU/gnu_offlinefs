@@ -42,9 +42,6 @@ auto_ptr<Node> Node::create(FsTxn& txns){
    return n;
 }
 
-auto_ptr<Node> Node::create(FsTxn& txns,const SContext& sctx, PathCache& pch, string path){
-   return Node::create_<Node>(txns,sctx,pch,path);
-}
 void Node::link(){
    setattr<nlink_t>("offlinefs.nlink",1+getattr<nlink_t>("offlinefs.nlink"));
 }

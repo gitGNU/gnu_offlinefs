@@ -17,14 +17,15 @@
 #ifndef FS_HXX
 #define FS_HXX
 
+#include <pthread.h>
+
 #include <common.hxx>
 #include <fsdb.hxx>
 #include <fsnodes.hxx>
 #include <sources.hxx>
 #include <media.hxx>
-#include <pthread.h>
+#include <pathcache.hxx>
 #include "scontextcache.hxx"
-#include "pathcache.hxx"
 
 #define MAX_OPEN_FILES 512
 
@@ -36,14 +37,18 @@ class FS{
 
       SContextCache scache;
       PathCache_hash pcache;
+
       inline SContext userctx();
 
-      uint32_t defmedium;
+      std::string defmedium;
       //Get the medium associated to f
       //If it isn't associated with any medium, associate it with the default one
-      std::auto_ptr<Medium> getmedium(FsTxn& txns,File& f,std::string phid);
+      std::tr1::shared_ptr<Medium> getmedium(File& f,std::string phid);
+      // Translate an exception into an error code
+      int errcode(std::exception& e);
+
    public:
-      FS(std::string dbroot,uint32_t defmedium);
+      FS(std::string dbroot, std::string defmedium, std::string config);
       ~FS();
 
       int getattr(const char* path, struct stat* st);

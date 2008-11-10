@@ -27,10 +27,15 @@
 //      unlink_files: if it's equal to "true", the real backend files will
 //                 be removed when not needed.
 class Medium_directory:public Medium{
+   protected:
+      std::string label;
+      std::string directory;
+      bool unlink_files;
+
       std::string realpath(File& f);
    public:
-      Medium_directory(FsTxn& txns,uint32_t id):Medium(txns,id) {}
-      static std::auto_ptr<Medium_directory> create(FsTxn& txns);
+      Medium_directory(libconfig::Setting& conf);
+
       virtual std::auto_ptr<Source> getsource(File& f,int mode);
       virtual int truncate(File& f,off_t length);
       virtual Stats getstats();

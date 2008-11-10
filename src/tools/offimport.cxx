@@ -26,9 +26,13 @@
 #include <stdio.h>
 #include <grp.h>
 #include <pwd.h>
+#include <libconfig.h++>
+
 #include <fsdb.hxx>
 #include <fsnodes.hxx>
 #include <media.hxx>
+#include <pathcache.hxx>
+#include <path.hxx>
 #include "format.hxx"
 
 using std::string;
@@ -38,6 +42,7 @@ using std::runtime_error;
 using std::istringstream;
 using std::exception;
 using std::tr1::unordered_map;
+using std::tr1::shared_ptr;
 namespace po=boost::program_options;
 
 void sigint_handler(int){
@@ -76,6 +81,10 @@ struct FMap{
 };
 
 int main(int argc, char** argv){
+   libconfig::Config conf;
+   string dbroot,config;
+
+   // Command line parsing
    po::options_description desc("Options");
    desc.add_options()
       ("help,h","Print help")
@@ -85,7 +94,8 @@ int main(int argc, char** argv){
       ("medium,M",po::value<uint32_t>(),"Associate every created file with the medium <arg>, using the input path as phid.")
       ("dbroot,b",po::value<string>(),"Database root")
       ("format,f",po::value<string>(),"Input format string")
-      ("prefix,p",po::value<string>(),"Path where the input tree will be reproduced");
+      ("prefix,p",po::value<string>(),"Path where the input tree will be reproduced")
+      ("config",po::value<string>(),"Configuration file");
    
    po::positional_options_description pdesc;
    po::variables_map vm;
@@ -99,7 +109,8 @@ int main(int argc, char** argv){
    po::notify(vm);
 
    if(vm.count("help")){
-      std::cerr << "This program accepts a directory listing (formatted as specified with -f) on standard input, reproducing it inside a offlinefs with the specified attributes.\n";
+      std::cerr << "This program accepts a directory listing (formatted as specified with -f) on standard\n"
+		<< "input, and reproduces it inside an offlinefs with the specified attributes.\n";
       std::cerr << desc;
       std::cerr << "\n"\
 	 "Valid input formats:\n"\
@@ -141,16 +152,35 @@ int main(int argc, char** argv){
       return 0;
    }
 
-   string dbroot;
-   if(!vm.count("dbroot")){
-      char* home=getenv("HOME");
-      if(!home){
-	 std::cerr << "Error: Database root required." << std::endl;
-	 std::cerr << "Use --help for more information." << std::endl;
-	 return 1;
+   // Defaults
+   char* home=getenv("HOME");
+   if(home){
+      dbroot = string(home)+"/.offlinefs/";
+      config = string(home)+"/.offlinefs/offlinefs.conf";
+   }
+   
+   // Parameters from config file
+   if(vm.count("config"))
+      config = vm["config"].as<string>();
+
+   try{
+      conf.readFile(config.c_str());
+
+      if(conf.exists("dbroot")){
+	 if(!conf.lookupValue("dbroot",dbroot)){
+	    std::cerr << "Error parsing configuration file option \"dbroot\": String expected.\n";
+	    return 1;
+	 }
       }
-      dbroot=string(home)+"/.offlinefs/";
-   }else
+   }catch(libconfig::FileIOException& e){
+   }catch(libconfig::ParseException& e){
+      std::cerr << "Error parsing the configuration file (line " << e.getLine() << "): "
+		<< e.getError() << "\n";
+      return 1;
+   }
+
+   // Parameters from command line
+   if(vm.count("dbroot"))
       dbroot=vm["dbroot"].as<string>();
 
    if(!vm.count("format")){
@@ -158,6 +188,7 @@ int main(int argc, char** argv){
       std::cerr << "Use --help for more information." << std::endl;
       return 1;
    }
+
    string prefix("/");
    if(vm.count("prefix")){
       prefix=vm["prefix"].as<string>();
@@ -173,24 +204,30 @@ int main(int argc, char** argv){
       return 1;
    }
 
+   if(dbroot.empty()){
+      std::cerr << "Error: Database root required." << std::endl;
+      std::cerr << "Use --help for more information." << std::endl;
+      return 1;
+   }
+
+   // Signal handling
    struct sigaction sact;
    memset(&sact,0,sizeof(struct sigaction));
    sact.sa_handler=sigint_handler;
    sigaction(SIGINT,&sact,NULL);
 
-   FsDb dbs(dbroot);
+   // Initialize the filesystem access objects
+   FsDb dbs(dbroot,config);
    dbs.open();
 
-   FsTxn mtxns(dbs);
-   auto_ptr<Medium> medium;
+   shared_ptr<Medium> medium;
    if(vm.count("medium"))
-      medium=Medium::getmedium(mtxns,vm["medium"].as<uint32_t>());
-   else
-      mtxns.abort();
+      medium=dbs.mcache.getmedium(vm["medium"].as<string>());
 
    SContext sctx(0,0);
-   PathCache_hash pch;
+   PathCache_hash pcache;
 
+   // Initialize the formatted string parser
    FParser<FMap> fpar;
    fpar.add(FSpec<FMap>("u",&FMap::user))
       .add(FSpec<FMap>("U",&FMap::numuser))
@@ -205,11 +242,11 @@ int main(int argc, char** argv){
       .add(FSpec<FMap>("C@",&FMap::ctime))
       .add(FSpec<FMap>("T@",&FMap::mtime))
       .add(FSpec<FMap>("s",&FMap::size))
-      .add(FSpec<FMap>("z{",&FMap::z))
-      .add(FSpec<FMap>("x8{",&FMap::x8))
-      .add(FSpec<FMap>("x16{",&FMap::x16))
-      .add(FSpec<FMap>("x32{",&FMap::x32))
-      .add(FSpec<FMap>("x64{",&FMap::x64));
+      .add(FSpec<FMap>("z",&FMap::z))
+      .add(FSpec<FMap>("x8",&FMap::x8))
+      .add(FSpec<FMap>("x16",&FMap::x16))
+      .add(FSpec<FMap>("x32",&FMap::x32))
+      .add(FSpec<FMap>("x64",&FMap::x64));
    Format<FMap> f;
    try{
       f=fpar.parse(vm["format"].as<string>()+"\n");
@@ -219,7 +256,7 @@ int main(int argc, char** argv){
       return 1;
    }
 
-
+   // Main loop
    char buf[1024];
 
    while(std::cin.good()){
@@ -244,6 +281,7 @@ int main(int argc, char** argv){
 	 bool creating=false;
 	 string path;
 
+	 // Resolve the file type
 	 if(!m.type.empty()){
 	    if(m.type=="f"){
 	       nodetype=S_IFREG;
@@ -264,37 +302,44 @@ int main(int argc, char** argv){
 	    }
 	 }
 
+	 // Get the node path
 	 if(!(path=m.path).empty() || !(path=m.path2).empty()){
 	    if(allow_modify){
 	       try{
-		  n=Node::getnode(txns,sctx,pch,prefix+path);
+		  n=pcache.getnode(txns,sctx,prefix+path);
 	       }catch(Node::ENotFound& e){}
 	    }
 	    if(!n.get() && allow_create){
 	       if(!nodetype)
 		  nodetype=S_IFREG;
-	       switch(nodetype){
-		  case S_IFREG:
-		     n=File::create(txns,sctx,pch,prefix+path);
-		     if(medium.get())
-			medium->addfile(*(File*)n.get(),path);
- 		     break;
-		  case S_IFDIR:
-		     n=Directory::create(txns,sctx,pch,prefix+path);
-		     break;
-		  case S_IFLNK:
-		     n=Symlink::create(txns,sctx,pch,prefix+path);
-		     break;
-		  default:
-		     n=Node::create(txns,sctx,pch,prefix+path);
+
+	       if(nodetype == S_IFREG){
+		  Path<File> p(txns,sctx,pcache,prefix+path);
+		  n=p.create(txns,sctx);
+
+		  if(medium.get())
+		     medium->addfile(*(File*)n.get(),path);
+
+	       }else if(nodetype == S_IFDIR){
+		  Path<Directory> p(txns,sctx,pcache,prefix+path);
+		  n=p.create(txns,sctx);
+
+	       }else if(nodetype == S_IFLNK){
+		  Path<Symlink> p(txns,sctx,pcache,prefix+path);
+		  n=p.create(txns,sctx);
+
+	       }else{
+		  Path<Node> p(txns,sctx,pcache,prefix+path);
+		  n=p.create(txns,sctx);
 	       }
+
 	       creating=true;
 	    }
 	 }
 	 if(!n.get())
-	    throw runtime_error("Error parsing input: no valid objects specified");
+	    throw runtime_error("Reading input: No valid objects specified");
 
-
+	 // Set the specified attributes...
 	 if(!m.link.empty()){
 	    if(!nodetype)
 	       nodetype=n->getattr<mode_t>("offlinefs.mode")&S_IFMT;
@@ -378,6 +423,7 @@ int main(int argc, char** argv){
 	       n->setattr<off_t>("offlinefs.size",parse<off_t>(m.size));
 	 }
 
+	 // Set the specified extended attributes...
 	 for(unordered_map<string,string>::iterator it=m.z.begin();it!=m.z.end();++it)
 	    n->setattrv(it->first,Buffer(it->second.c_str(),it->second.size()));
 
@@ -395,7 +441,7 @@ int main(int argc, char** argv){
 
       }catch(exception& e){
 	 txns.abort();
-	 std::cerr << "Near: " << line << std::endl;
+	 std::cerr << "Near: \"" << line << "\"" << std::endl;
 	 std::cerr << e.what() << std::endl;
 	 return 1;
       }

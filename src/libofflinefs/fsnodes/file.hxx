@@ -19,14 +19,11 @@
 
 #include "node.hxx"
 
-class Medium;
-
 class File:public Node{
    public:
       File(FsTxn& txns,uint64_t id):Node(txns,id) {}
 
       static std::auto_ptr<File> create(FsTxn& txns);
-      static std::auto_ptr<File> create(FsTxn& txns,const SContext& sctx, PathCache& pch, std::string path);
 
       virtual void remove();
 };

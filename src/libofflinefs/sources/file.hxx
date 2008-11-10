@@ -23,7 +23,7 @@
 class Source_file:public Source{
       int fd;
    public:
-      Source_file(FsTxn& txns,uint64_t fileid,std::string path,int mode);
+      Source_file(File& f,std::string path,int mode);
       virtual ~Source_file();
 
       virtual int read(char* buf, size_t nbyte, off_t offset);

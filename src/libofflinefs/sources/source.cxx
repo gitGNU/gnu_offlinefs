@@ -18,7 +18,6 @@
 
 using std::string;
 
-Source::Source(FsTxn& txns,uint64_t fileid,int mode):dbs(txns.dbs),fileid(fileid),size(0),mode(mode) {
-   File f(txns,fileid);
+Source::Source(File& f,int mode):dbs(f.txns.dbs),fileid(f.getid()),size(0),mode(mode) {
    size=f.getattr<off_t>("offlinefs.size");
 }

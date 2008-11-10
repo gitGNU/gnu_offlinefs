@@ -28,7 +28,7 @@ class Source{
       off_t size;
       int mode;
    public:
-      Source(FsTxn& txns,uint64_t fileid,int mode);
+      Source(File& f,int mode);
       virtual ~Source() {}
       uint64_t getfileid() {return fileid;}
 

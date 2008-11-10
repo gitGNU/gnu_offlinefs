@@ -14,39 +14,33 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef COMMON_HXX
-#define COMMON_HXX
+#ifndef MEDIACACHE_HXX
+#define MEDIACACHE_HXX
 
-#include <config.h>
-#define _FILE_OFFSET_BITS 64
-#define FUSE_USE_VERSION 26
-#include <fuse.h>
-#include <iostream>
-#include <sstream>
-#include <sys/stat.h>
-#include <errno.h>
-#include <attr/xattr.h>
-#include <time.h>
-#include <stdexcept>
-#include <list>
-#include <memory>
-#include <unistd.h>
-#include <sys/statvfs.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <utility>
-#include <typeinfo>
-#include <stdlib.h>
-#include <string.h>
+#include <libconfig.h++>
+#include <tr1/unordered_map>
+#include <tr1/memory>
 
-#ifdef HAVE_DB_CXX_H
-#include <db_cxx.h>
-#elif defined HAVE_DB4_7_DB_CXX_H
-#include <db4.7/db_cxx.h>
-#elif defined HAVE_DB4_6_DB_CXX_H
-#include <db4.6/db_cxx.h>
-#elif defined HAVE_DB4_5_DB_CXX_H
-#include <db4.5/db_cxx.h>
-#endif
+#include <common.hxx>
+
+class Medium;
+
+class MediaCache{
+   protected:
+      typedef std::tr1::shared_ptr<Medium> CElem;
+      typedef std::tr1::unordered_map<std::string, CElem> Cache;
+
+      Cache cache;
+      std::string config;
+      time_t checktime;
+
+      void uptodate();
+      void reload();
+   public:
+      MediaCache(std::string config);
+      
+      std::tr1::shared_ptr<Medium> getmedium(std::string id);
+      std::list<std::tr1::shared_ptr<Medium> > list();
+};
 
 #endif
