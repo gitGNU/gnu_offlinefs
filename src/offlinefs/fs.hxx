@@ -21,9 +21,8 @@
 
 #include <common.hxx>
 #include <fsdb.hxx>
-#include <fsnodes.hxx>
-#include <sources.hxx>
-#include <media.hxx>
+#include <nodes.hxx>
+#include <sources/source.hxx>
 #include <pathcache.hxx>
 #include "scontextcache.hxx"
 
@@ -41,9 +40,9 @@ class FS{
       inline SContext userctx();
 
       std::string defmedium;
-      //Get the medium associated to f
+      //Get the source associated to f
       //If it isn't associated with any medium, associate it with the default one
-      std::tr1::shared_ptr<Medium> getmedium(File& f,std::string phid);
+      std::auto_ptr<Source> getsource(File& f,std::string phid,int flags);
       // Translate an exception into an error code
       int errcode(std::exception& e);
 

@@ -22,7 +22,7 @@
 #include <fsdb.hxx>
 #include <scontext.hxx>
 #include <pathcache.hxx>
-#include <fsnodes.hxx>
+#include <nodes.hxx>
 
 template<typename T>
 class Path{

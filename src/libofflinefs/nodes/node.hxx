@@ -14,8 +14,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FSNODES_NODE_HXX
-#define FSNODES_NODE_HXX
+#ifndef NODES_NODE_HXX
+#define NODES_NODE_HXX
 
 #include <common.hxx>
 #include <fsdb.hxx>

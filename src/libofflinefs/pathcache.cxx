@@ -15,7 +15,7 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <pathcache.hxx>
-#include <fsnodes.hxx>
+#include <nodes.hxx>
 
 using std::string;
 using std::auto_ptr;

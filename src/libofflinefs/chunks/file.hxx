@@ -14,18 +14,24 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FSNODES_FILE_HXX
-#define FSNODES_FILE_HXX
+#ifndef CHUNK_FILE_HXX
+#define CHUNK_FILE_HXX
 
-#include "node.hxx"
+#include "chunk.hxx"
 
-class File:public Node{
+// Implementation that stores the chunk inside a file of the
+// underlying filesystem
+class Chunk_file:public Chunk{
+      int fd;
    public:
-      File(FsTxn& txns,uint64_t id):Node(txns,id) {}
+      Chunk_file(std::string path,int mode);
+      virtual ~Chunk_file();
 
-      static std::auto_ptr<File> create(FsTxn& txns);
-
-      virtual void remove();
+      virtual int read(char* buf, size_t nbyte, off_t offset);
+      virtual int write(const char* buf, size_t nbyte, off_t offset);
+      virtual int flush();
+      virtual int fsync(int datasync);
+      virtual int ftruncate(off_t length);
 };
 
 #endif

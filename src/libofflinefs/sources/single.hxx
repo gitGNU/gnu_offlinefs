@@ -14,30 +14,25 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef SOURCES_SINGLE_HXX
+#define SOURCES_SINGLE_HXX
+
 #include "source.hxx"
-#include "single.hxx"
+#include <chunks/chunk.hxx>
 
-using std::string;
-using std::auto_ptr;
+// Implementation that proxies the operations to a single Chunk
+class Source_single:public Source{
+      std::auto_ptr<Chunk> chunk;
+   public:
+      Source_single(File& f,int mode);
 
-Source::Source(File& f,int mode):dbs(f.txns.dbs),fileid(f.getid()),size(0),mode(mode) {
-   size=f.getattr<off_t>("offlinefs.size");
-}
+      static void remove(File& f);
 
-auto_ptr<Source> Source::getsource(File& f,int mode){
-   string source = f.getattrv("offlinefs.source");
+      virtual int read(char* buf, size_t nbyte, off_t offset);
+      virtual int write(const char* buf, size_t nbyte, off_t offset);
+      virtual int flush();
+      virtual int fsync(int datasync);
+      virtual int ftruncate(off_t length);
+};
 
-   if(source == "single")
-      return auto_ptr<Source>(new Source_single(f,mode));
-   else
-      throw std::runtime_error(string("Source::getsource: Unknown source type \"")+ source + "\".");
-}
-
-void Source::remove(File& f){
-   string source = f.getattrv("offlinefs.source");
-
-   if(source == "single")
-      Source_single::remove(f);
-   else
-      throw std::runtime_error(string("Source::remove: Unknown source type \"")+ source + "\".");
-}
+#endif

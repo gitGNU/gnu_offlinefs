@@ -29,8 +29,8 @@
 #include <libconfig.h++>
 
 #include <fsdb.hxx>
-#include <fsnodes.hxx>
-#include <media.hxx>
+#include <nodes.hxx>
+#include <media/medium.hxx>
 #include <pathcache.hxx>
 #include <path.hxx>
 #include "format.hxx"
@@ -317,8 +317,13 @@ int main(int argc, char** argv){
 		  Path<File> p(txns,sctx,pcache,prefix+path);
 		  n=p.create(txns,sctx);
 
-		  if(medium.get())
-		     medium->addfile(*(File*)n.get(),path);
+		  if(medium.get()){
+		     medium->addfile(path);
+
+		     n->setattrv("offlinefs.source",string("single"));
+		     n->setattrv("offlinefs.medium",vm["medium"].as<string>());
+		     n->setattrv("offlinefs.phid",path);
+		  }
 
 	       }else if(nodetype == S_IFDIR){
 		  Path<Directory> p(txns,sctx,pcache,prefix+path);
@@ -344,7 +349,7 @@ int main(int argc, char** argv){
 	    if(!nodetype)
 	       nodetype=n->getattr<mode_t>("offlinefs.mode")&S_IFMT;
 	    if(nodetype==S_IFLNK)
-	       n->setattrv("offlinefs.symlink",Buffer(m.link.c_str(),m.link.size()));
+	       n->setattrv("offlinefs.symlink",Buffer(m.link));
 	 }
 
 	 if(!m.numgroup.empty()){
@@ -425,7 +430,7 @@ int main(int argc, char** argv){
 
 	 // Set the specified extended attributes...
 	 for(unordered_map<string,string>::iterator it=m.z.begin();it!=m.z.end();++it)
-	    n->setattrv(it->first,Buffer(it->second.c_str(),it->second.size()));
+	    n->setattrv(it->first,Buffer(it->second));
 
 	 for(unordered_map<string,string>::iterator it=m.x8.begin();it!=m.x8.end();++it)
 	    n->setattr<uint8_t>(it->first,parse<uint8_t>(it->second));

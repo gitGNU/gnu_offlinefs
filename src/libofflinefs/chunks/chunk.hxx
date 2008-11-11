@@ -14,16 +14,22 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef FSNODES_SYMLINK_HXX
-#define FSNODES_SYMLINK_HXX
+#ifndef CHUNKS_CHUNK_HXX
+#define CHUNKS_CHUNK_HXX
 
-#include "node.hxx"
+#include <common.hxx>
 
-class Symlink:public Node{
+// Class implementing the lower level file IO
+class Chunk{
    public:
-      Symlink(FsTxn& txns,uint64_t id);
+      virtual ~Chunk() {}
 
-      static std::auto_ptr<Symlink> create(FsTxn& txns);
+      // Analogous to the standard unix calls
+      virtual int read(char* buf, size_t nbyte, off_t offset)=0;
+      virtual int write(const char* buf, size_t nbyte, off_t offset)=0;
+      virtual int flush()=0;
+      virtual int fsync(int datasync)=0;
+      virtual int ftruncate(off_t length)=0;
 };
 
 #endif

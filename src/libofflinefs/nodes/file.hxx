@@ -14,23 +14,18 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "file.hxx"
-#include "directory.hxx"
-#include <media.hxx>
+#ifndef NODES_FILE_HXX
+#define NODES_FILE_HXX
 
-using std::auto_ptr;
-using std::string;
+#include "node.hxx"
 
-auto_ptr<File> File::create(FsTxn& txns){
-   auto_ptr<File> n(new File(txns,Node::create(txns)->getid()));
-   n->setattr<mode_t>("offlinefs.mode",S_IFREG);
-   return n;
-}
+class File:public Node{
+   public:
+      File(FsTxn& txns,uint64_t id):Node(txns,id) {}
 
-void File::remove(){
-   try{
-      Buffer mediumid = getattrv("offlinefs.mediumid");
-      txns.dbs.mcache.getmedium(string(mediumid.data, mediumid.size))->delfile(*this);
-   }catch(...){}
-   Node::remove();
-}
+      static std::auto_ptr<File> create(FsTxn& txns);
+
+      virtual void remove();
+};
+
+#endif

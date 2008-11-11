@@ -6,7 +6,7 @@ AC_INIT([offlinefs], [0.2], [currojerez@gmail.com])
 AM_INIT_AUTOMAKE
 AC_LANG(C++)
 
-AC_CONFIG_SRCDIR([src/libofflinefs/fsnodes/symlink.hxx])
+AC_CONFIG_SRCDIR([src/libofflinefs/nodes/symlink.hxx])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.

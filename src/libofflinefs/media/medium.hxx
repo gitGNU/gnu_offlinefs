@@ -20,9 +20,9 @@
 #include <libconfig.h++>
 
 #include <common.hxx>
-#include <fsnodes.hxx>
+#include <nodes.hxx>
 #include <fsdb.hxx>
-#include <sources.hxx>
+#include <chunks/chunk.hxx>
 
 // Interface to an object implementing the file data operations
 class Medium{
@@ -39,15 +39,14 @@ class Medium{
       static std::auto_ptr<Medium> getmedium(libconfig::Setting& conf);
       virtual ~Medium() {}
 
-      virtual std::auto_ptr<Source> getsource(File& f,int mode)=0;
-      virtual int truncate(File& f,off_t length)=0;
+      virtual std::auto_ptr<Chunk> getchunk(std::string phid, int mode)=0;
 
       virtual Stats getstats()=0; 
 
       // Link file f with this medium, phid should be a string that will be used
       // to locate the file in the medium
-      virtual void addfile(File& f,std::string phid)=0;
-      virtual void delfile(File& f)=0;
+      virtual void addfile(std::string phid)=0;
+      virtual void delfile(std::string phid)=0;
 };
 
 #endif

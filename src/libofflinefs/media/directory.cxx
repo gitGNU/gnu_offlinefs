@@ -15,17 +15,11 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "directory.hxx"
-#include <stdlib.h>
+#include "chunks/file.hxx"
 
 using std::auto_ptr;
 using std::string;
 using std::list;
-
-std::string Medium_directory::realpath(File& f){
-   Buffer b=f.getattrv("offlinefs.phid");
-   string phid(b.data,b.size);
-   return directory + "/" + phid;   
-}
 
 Medium_directory::Medium_directory(libconfig::Setting& conf){
    if(!conf.lookupValue("label",label)){
@@ -52,16 +46,8 @@ Medium_directory::Medium_directory(libconfig::Setting& conf){
    }
 }
 
-std::auto_ptr<Source> Medium_directory::getsource(File& f,int mode){
-   return std::auto_ptr<Source>(new Source_file(f,realpath(f),mode));
-}
-
-static inline int truncate_(const char* path, off_t length){
-   return truncate(path,length);
-}
-
-int Medium_directory::truncate(File& f,off_t length){
-   return truncate_(realpath(f).c_str(),length);
+std::auto_ptr<Chunk> Medium_directory::getchunk(std::string phid,int mode){
+   return std::auto_ptr<Chunk>(new Chunk_file(directory + "/" + phid,mode));
 }
 
 Medium::Stats Medium_directory::getstats(){
@@ -74,14 +60,9 @@ Medium::Stats Medium_directory::getstats(){
    return st_;
 }
 
-void Medium_directory::addfile(File& f,string phid){
-   f.setattrv("offlinefs.phid",Buffer(phid.c_str(),phid.size()));
-   f.setattrv("offlinefs.mediumid",Buffer(label.c_str(),label.size()));
-}
+void Medium_directory::addfile(string phid){}
 
-void Medium_directory::delfile(File& f){
+void Medium_directory::delfile(string phid){
    if(unlink_files)
-      unlink(realpath(f).c_str());
+      unlink((directory + "/" + phid).c_str());
 }
-
-

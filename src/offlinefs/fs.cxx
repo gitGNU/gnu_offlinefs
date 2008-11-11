@@ -16,6 +16,7 @@
 
 #include "fs.hxx"
 #include <path.hxx>
+#include <media/medium.hxx>
 
 #define MIN(a,b) (a<b?a:b)
 
@@ -29,16 +30,18 @@ inline SContext FS::userctx(){
    return scache.get(fuse_get_context()->uid,fuse_get_context()->gid);
 }
 
-shared_ptr<Medium> FS::getmedium(File& f,std::string phid){
-   shared_ptr<Medium> m;
+auto_ptr<Source> FS::getsource(File& f,std::string phid,int flags){
    try{
-      Buffer mediumid = f.getattrv("offlinefs.mediumid");
-      m=dbs.mcache.getmedium(string(mediumid.data,mediumid.size));
+      return Source::getsource(f,flags);
    }catch(Node::EAttrNotFound& e){
-      m=dbs.mcache.getmedium(defmedium);
-      m->addfile(f,phid);
+      dbs.mcache.getmedium(defmedium)->addfile(phid);
+
+      f.setattrv("offlinefs.source",string("single"));
+      f.setattrv("offlinefs.medium",defmedium);
+      f.setattrv("offlinefs.phid",phid);
+
+      return Source::getsource(f,flags);
    }
-   return m;
 }
 
 int FS::errcode(exception& e){
@@ -50,8 +53,6 @@ int FS::errcode(exception& e){
       return -EINVAL;
    else if(typeid(e)==typeid(Node::EBadCast<File>))
       return -EINVAL;
-   else if(typeid(e)==typeid(Node::EAttrNotFound))
-      return -EIO;
    else if(typeid(e)==typeid(Directory::EExists))
       return -EEXIST;
    else if(typeid(e)==typeid(Node::EAccess))
@@ -223,7 +224,7 @@ int FS::symlink(const char* oldpath, const char* newpath){
 
       sl->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
       sl->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
-      sl->setattrv("offlinefs.symlink",Buffer(oldpath,strlen(oldpath)));
+      sl->setattrv("offlinefs.symlink",Buffer(oldpath));
    }catch(exception& e){
       return errcode(e);
    }
@@ -327,7 +328,7 @@ int FS::truncate(const char* path, off_t length){
       n->setattr<time_t>("offlinefs.mtime",time(NULL));
       n->setattr<time_t>("offlinefs.ctime",time(NULL));
 
-      return getmedium(*n,path)->truncate(*n,length);
+      return getsource(*n,path,O_WRONLY)->ftruncate(length);
    }catch(exception& e){
       return errcode(e);
    }
@@ -345,7 +346,7 @@ int FS::open(const char* path, struct fuse_file_info* fi){
       if((fi->flags&O_ACCMODE)==O_WRONLY||(fi->flags&O_ACCMODE)==O_RDWR)
 	 n->access(sctx,W_OK);
 
-      auto_ptr<Source> s=getmedium(*n,path)->getsource(*n,fi->flags);
+      auto_ptr<Source> s=getsource(*n,path,fi->flags);
 
       for(int i=0;i<MAX_OPEN_FILES;i++)
 	 if(openFiles[i]==NULL){

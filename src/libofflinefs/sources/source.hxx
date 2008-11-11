@@ -18,9 +18,9 @@
 #define SOURCES_SOURCE_HXX
 
 #include <common.hxx>
-#include <fsnodes.hxx>
+#include <nodes.hxx>
 
-// Class that would implement every possible operation over an open file
+// Class implementing the highest level file IO
 class Source{
    protected:
       FsDb& dbs;
@@ -30,13 +30,20 @@ class Source{
    public:
       Source(File& f,int mode);
       virtual ~Source() {}
+
       uint64_t getfileid() {return fileid;}
+
+      // Instantiate a Source-derived object for a File
+      static std::auto_ptr<Source> getsource(File& f,int mode);
+      // Free the underlying storage for a File
+      static void remove(File& f);
 
       // Analogous to the standard unix calls
       virtual int read(char* buf, size_t nbyte, off_t offset)=0;
       virtual int write(const char* buf, size_t nbyte, off_t offset)=0;
       virtual int flush()=0;
       virtual int fsync(int datasync)=0;
+      virtual int ftruncate(off_t length)=0;
 };
 
 #endif

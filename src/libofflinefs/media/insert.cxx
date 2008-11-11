@@ -37,14 +37,9 @@ Medium_insert::Medium_insert(libconfig::Setting& conf): Medium_directory(conf){
    }
 }
 
-std::auto_ptr<Source> Medium_insert::getsource(File& f,int mode){
+std::auto_ptr<Chunk> Medium_insert::getchunk(std::string phid, int mode){
    insert();
-   return Medium_directory::getsource(f,mode);
-}
-
-int Medium_insert::truncate(File& f,off_t length){
-   insert();
-   return Medium_directory::truncate(f,length);
+   return Medium_directory::getchunk(phid,mode);
 }
 
 Medium::Stats Medium_insert::getstats(){
@@ -52,14 +47,14 @@ Medium::Stats Medium_insert::getstats(){
    return Medium_directory::getstats();
 }
 
-void Medium_insert::addfile(File& f,string phid){
-   Medium_directory::addfile(f,phid);
+void Medium_insert::addfile(string phid){
+   Medium_directory::addfile(phid);
 }
 
-void Medium_insert::delfile(File& f){
+void Medium_insert::delfile(string phid){
    if(unlink_files)
       insert();
-   Medium_directory::delfile(f);
+   Medium_directory::delfile(phid);
 }
 
 bool Medium_insert::check(){

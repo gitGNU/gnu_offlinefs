@@ -15,8 +15,7 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "fsdb.hxx"
-#include "fsnodes.hxx"
-#include "media.hxx"
+#include "nodes.hxx"
 
 using std::auto_ptr;
 

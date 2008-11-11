@@ -38,11 +38,10 @@ class Medium_insert:public Medium_directory{
    public:
       Medium_insert(libconfig::Setting& conf);
 
-      virtual std::auto_ptr<Source> getsource(File& f,int mode);
-      virtual int truncate(File& f,off_t length);
+      virtual std::auto_ptr<Chunk> getchunk(std::string phid, int mode);
       virtual Stats getstats();
-      virtual void addfile(File& f,std::string phid);
-      virtual void delfile(File& f);
+      virtual void addfile(std::string phid);
+      virtual void delfile(std::string phid);
 };
 
 #endif

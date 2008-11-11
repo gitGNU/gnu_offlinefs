@@ -15,7 +15,7 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <mediacache.hxx>
-#include <media.hxx>
+#include <media/medium.hxx>
 
 using std::string;
 using std::pair;

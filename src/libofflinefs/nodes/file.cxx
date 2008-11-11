@@ -14,30 +14,22 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "source.hxx"
-#include "single.hxx"
+#include "file.hxx"
+#include "directory.hxx"
+#include <sources/source.hxx>
 
-using std::string;
 using std::auto_ptr;
+using std::string;
 
-Source::Source(File& f,int mode):dbs(f.txns.dbs),fileid(f.getid()),size(0),mode(mode) {
-   size=f.getattr<off_t>("offlinefs.size");
+auto_ptr<File> File::create(FsTxn& txns){
+   auto_ptr<File> n(new File(txns,Node::create(txns)->getid()));
+   n->setattr<mode_t>("offlinefs.mode",S_IFREG);
+   return n;
 }
 
-auto_ptr<Source> Source::getsource(File& f,int mode){
-   string source = f.getattrv("offlinefs.source");
-
-   if(source == "single")
-      return auto_ptr<Source>(new Source_single(f,mode));
-   else
-      throw std::runtime_error(string("Source::getsource: Unknown source type \"")+ source + "\".");
-}
-
-void Source::remove(File& f){
-   string source = f.getattrv("offlinefs.source");
-
-   if(source == "single")
-      Source_single::remove(f);
-   else
-      throw std::runtime_error(string("Source::remove: Unknown source type \"")+ source + "\".");
+void File::remove(){
+   try{
+      Source::remove(*this);
+   }catch(...){}
+   Node::remove();
 }

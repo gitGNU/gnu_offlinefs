@@ -36,13 +36,17 @@ class Buffer{
       void clean();
       void copy(const char* data, size_t size);
    public:
+      char* data;
+      size_t size;
+
       Buffer():data(NULL),size(0) {}
       Buffer(const char* data,size_t size) { copy(data,size); }
       Buffer(const Buffer& v){ copy(v.data,v.size); }
+      Buffer(const std::string& s) { copy(s.c_str(),s.size()); }
       ~Buffer() {clean();}
+
       Buffer& operator=(const Buffer& v) { clean(); copy(v.data,v.size); return *this;}
-      char* data;
-      size_t size;
+      operator std::string() { return std::string(data,size); }
 };
 
 
@@ -84,7 +88,7 @@ class Database{
 
 	    class EAttrNotFound:public std::runtime_error{
 	       public:
-		  EAttrNotFound();
+		  EAttrNotFound(std::string attr);
 	    };
 	    
 	    Register(typename Database<T>::Txn& txn, T id);

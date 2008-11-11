@@ -15,7 +15,8 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 
-template<typename T> Database<T>::Register::EAttrNotFound::EAttrNotFound():runtime_error("Database::Register::EAttrNotFound") {}
+template<typename T> Database<T>::Register::EAttrNotFound::EAttrNotFound(std::string attr):
+   runtime_error("Attribute not found: " + attr) {}
 
 template<typename T>
 template<typename S> S Database<T>::Register::getattr(std::string name){
@@ -62,7 +63,7 @@ Buffer Database<T>::Register::getattrv(std::string name){
 
 
    if(txn.cur->get(&key,&v,DB_SET|DB_RMW))
-      throw EAttrNotFound();
+      throw EAttrNotFound(name);
 
    bk=Buffer((char*)v.get_data(),v.get_size());
 
@@ -92,7 +93,7 @@ void Database<T>::Register::delattr(std::string name){
    v.set_flags(DB_DBT_PARTIAL);
    v.set_dlen(0);
    if(txn.cur->get(&key,&v,DB_SET|DB_RMW))
-      throw EAttrNotFound();      
+      throw EAttrNotFound(name);
    txn.cur->del(0);
 
    txn.db.env.cleanlogs();

@@ -14,22 +14,16 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef SOURCES_FILE_HXX
-#define SOURCES_FILE_HXX
+#ifndef NODES_SYMLINK_HXX
+#define NODES_SYMLINK_HXX
 
-#include "source.hxx"
+#include "node.hxx"
 
-// Implementation that proxies the operations to another filesystem object
-class Source_file:public Source{
-      int fd;
+class Symlink:public Node{
    public:
-      Source_file(File& f,std::string path,int mode);
-      virtual ~Source_file();
+      Symlink(FsTxn& txns,uint64_t id);
 
-      virtual int read(char* buf, size_t nbyte, off_t offset);
-      virtual int write(const char* buf, size_t nbyte, off_t offset);
-      virtual int flush();
-      virtual int fsync(int datasync);
+      static std::auto_ptr<Symlink> create(FsTxn& txns);
 };
 
 #endif

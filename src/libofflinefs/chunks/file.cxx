@@ -18,7 +18,7 @@
 
 using std::string;
 
-Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1){
+Chunk_file::Chunk_file(std::string path,int mode):fd(-1){
    if((mode&O_ACCMODE)==O_RDONLY){
       fd=open(path.c_str(),mode);
    }else{
@@ -33,7 +33,7 @@ Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1
 	       string dir=path.substr(0,newpos);
 	       if(stat(dir.c_str(),&st)){
 		  if(errno!=ENOENT || mkdir(dir.c_str(),0770))
-		     throw std::runtime_error("Source_file::Source_file: error creating parent directories.");
+		     throw std::runtime_error("Chunk_file::Chunk_file: error creating parent directories.");
 	       }
 	    }
 	    pos=newpos+1;
@@ -42,42 +42,38 @@ Source_file::Source_file(File& f,std::string path,int mode):Source(f,mode),fd(-1
       }
    }
    if(fd==-1)
-      throw std::runtime_error("Source_file::Source_file: error opening file.");
+      throw std::runtime_error("Chunk_file::Chunk_file: error opening file.");
 }
 
-Source_file::~Source_file(){
+Chunk_file::~Chunk_file(){
    if(fd!=-1)
       close(fd);
 }
 
-int Source_file::read(char* buf, size_t nbyte, off_t offset){
+int Chunk_file::read(char* buf, size_t nbyte, off_t offset){
    return pread(fd,buf,nbyte,offset);
 }
 
-int Source_file::write(const char* buf, size_t nbyte, off_t offset){
-   if(((off_t)nbyte+offset)>size)
-      size=nbyte+offset;
+int Chunk_file::write(const char* buf, size_t nbyte, off_t offset){
    return pwrite(fd,buf,nbyte,offset);
 }
 
-int Source_file::flush(){
-   FsTxn txns(dbs);
-   File f(txns,fileid);
-   f.setattr<off_t>("offlinefs.size",size);
+int Chunk_file::flush(){
    return 0;
 }
 
-inline int real_fsync(int fd){
+static inline int fsync_(int fd){
    return fsync(fd);
 }
 
-int Source_file::fsync(int datasync){
+int Chunk_file::fsync(int datasync){
    if(datasync)
       return fdatasync(fd);
    else{
-      FsTxn txns(dbs);
-      File f(txns,fileid);
-      f.setattr<off_t>("offlinefs.size",size);
-      return real_fsync(fd);
+      return fsync_(fd);
    }
+}
+
+int Chunk_file::ftruncate(off_t length){
+   return ::ftruncate(fd,length);
 }

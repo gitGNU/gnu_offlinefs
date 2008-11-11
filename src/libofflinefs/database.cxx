@@ -15,7 +15,6 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "database.hxx"
-#include "fsnodes.hxx"
 
 Environment::Environment(std::string path):opcount(0){
    struct stat st;
