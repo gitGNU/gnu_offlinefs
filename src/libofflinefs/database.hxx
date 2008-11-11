@@ -56,7 +56,6 @@ class Buffer{
 //
 template<typename T>
 class Database{
-      T incrId(T id);
       Environment& env;
       DbEnv* dbenv;
       std::string name;
@@ -134,6 +133,9 @@ class Database{
 
 };
 
+// Endianness conversion functions
+template<typename T> T __be_to_cpu(T v);
+template<typename T> T __cpu_to_be(T v);
 
 template<typename T>
 Database<T>::Txn::Txn(Database<T>& db):db(db){
@@ -186,7 +188,8 @@ T Database<T>::createregister(Txn& txn){
    if(err!=DB_NOTFOUND){
       if(err || key.get_size()<sizeof(typename Register::Key))
 	 throw std::runtime_error("Database::createregister: Error reading from the database.");
-      id=incrId(((typename Register::Key*)key.get_data())->id);
+
+      id=__cpu_to_be<T>(__be_to_cpu<T>(((typename Register::Key*)key.get_data())->id)+1);
    }
    key.set_data(&id);
    key.set_size(sizeof(T));
@@ -250,18 +253,6 @@ void Database<T>::rebuild(){
    db->open(NULL,(name+".db").c_str(),NULL,DB_BTREE,DB_AUTO_COMMIT|DB_CREATE|DB_THREAD,0);
    db->truncate(NULL,NULL,0);
 }
-
-template<typename T>
-T Database<T>::incrId(T id){
-//Dirty hack to allow using arbitrary T... (Not really necessary)
-   char* p=(char*)&id+sizeof(T);
-   do{
-      p--;
-      (*p)++;
-   }while(p!=(char*)&id && !*p);
-   return id;
-}
-
 
 #include "register.hxx"
 

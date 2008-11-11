@@ -59,14 +59,83 @@ void Buffer::copy(const char* data, size_t size){
    memcpy(this->data,data,size);
 }
 
-
+// Endianness related template specialization
 template<>
-uint32_t Database<uint32_t>::incrId(uint32_t id){
-   return __cpu_to_be32(__be32_to_cpu(id)+1);
+uint8_t __be_to_cpu<uint8_t>(uint8_t v){
+   return v;
 }
 
 template<>
-uint64_t Database<uint64_t>::incrId(uint64_t id){
-   return __cpu_to_be64(__be64_to_cpu(id)+1);
+uint8_t __cpu_to_be<uint8_t>(uint8_t v){
+   return v;
 }
 
+template<>
+uint16_t __be_to_cpu<uint16_t>(uint16_t v){
+   return __be16_to_cpu(v);
+}
+
+template<>
+uint16_t __cpu_to_be<uint16_t>(uint16_t v){
+   return __cpu_to_be16(v);
+}
+
+template<>
+uint32_t __be_to_cpu<uint32_t>(uint32_t v){
+   return __be32_to_cpu(v);
+}
+
+template<>
+uint32_t __cpu_to_be<uint32_t>(uint32_t v){
+   return __cpu_to_be32(v);
+}
+
+template<>
+uint64_t __be_to_cpu<uint64_t>(uint64_t v){
+   return __be64_to_cpu(v);
+}
+
+template<>
+uint64_t __cpu_to_be<uint64_t>(uint64_t v){
+   return __cpu_to_be64(v);
+}
+
+template<>
+int8_t __be_to_cpu<int8_t>(int8_t v){
+   return v;
+}
+
+template<>
+int8_t __cpu_to_be<int8_t>(int8_t v){
+   return v;
+}
+
+template<>
+int16_t __be_to_cpu<int16_t>(int16_t v){
+   return __be16_to_cpu(v);
+}
+
+template<>
+int16_t __cpu_to_be<int16_t>(int16_t v){
+   return __cpu_to_be16(v);
+}
+
+template<>
+int32_t __be_to_cpu<int32_t>(int32_t v){
+   return __be32_to_cpu(v);
+}
+
+template<>
+int32_t __cpu_to_be<int32_t>(int32_t v){
+   return __cpu_to_be32(v);
+}
+
+template<>
+int64_t __be_to_cpu<int64_t>(int64_t v){
+   return __be64_to_cpu(v);
+}
+
+template<>
+int64_t __cpu_to_be<int64_t>(int64_t v){
+   return __cpu_to_be64(v);
+}

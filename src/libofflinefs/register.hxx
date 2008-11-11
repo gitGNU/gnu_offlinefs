@@ -23,11 +23,12 @@ template<typename S> S Database<T>::Register::getattr(std::string name){
    Buffer b=getattrv(name);
    if(b.size!=sizeof(S))
       throw std::runtime_error("Database::Register::getattr: Sizes do not match.");
-   return *(S*)b.data;
+   return __be_to_cpu<S>(*(S*)b.data);
 }
 
 template<typename T>
 template<typename S> void Database<T>::Register::setattr(std::string name,S v){
+   v = __cpu_to_be<S>(v);
    Buffer b((char*)&v,sizeof(S));
    setattrv(name,b);
 }
