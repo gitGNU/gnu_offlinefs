@@ -19,11 +19,10 @@
 
 #include "common.hxx"
 #include "database.hxx"
-#include "mediacache.hxx"
 
 class FsDb:public Environment{
    public:
-      FsDb(std::string dbroot, std::string config);
+      FsDb(std::string dbrooto);
       ~FsDb();
 
       void open();
@@ -39,8 +38,8 @@ class FsDb:public Environment{
       // as attributes, mapping a child name into its node id.
       Database<uint64_t> directories;
 
-      // Media cache
-      MediaCache mcache;
+      // Database storing medium attributes
+      Database<uint32_t> media;
 };
 
 //Automatically begin/commit a transaction in each database
@@ -49,10 +48,11 @@ class FsTxn{
       FsDb& dbs;
       Database<uint64_t>::Txn nodes;
       Database<uint64_t>::Txn directories;
+      Database<uint32_t>::Txn media; 
  
-      FsTxn(FsDb& dbs):dbs(dbs),nodes(dbs.nodes),directories(dbs.directories){}
-      void commit() {nodes.commit(); directories.commit();}
-      void abort() {nodes.abort(); directories.abort();}
+      FsTxn(FsDb& dbs):dbs(dbs),nodes(dbs.nodes),directories(dbs.directories),media(dbs.media){}
+      void commit() {nodes.commit(); directories.commit(); media.commit();}
+      void abort() {nodes.abort(); directories.abort(); media.abort();}
 };
 
 #endif

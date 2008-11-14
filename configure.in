@@ -17,7 +17,6 @@ AC_PROG_LIBTOOL
 AC_CHECK_LIB([db_cxx],[main],,[AC_MSG_ERROR([Berkeley DB library (c++) not found.])])
 AC_CHECK_LIB([fuse], [fuse_main_real],,[AC_MSG_ERROR([Fuse library not found])])
 AC_CHECK_LIB([boost_program_options], [main],[true],[AC_MSG_ERROR([boost_program_options library not found])])
-PKG_CHECK_MODULES([libconfig], [libconfig++])
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -39,7 +38,6 @@ AC_CHECK_HEADER([pthread.h],,[AC_MSG_ERROR([<pthread.h> not found!])])
 AC_CHECK_HEADER([boost/program_options.hpp],,[AC_MSG_ERROR([<boost/program_options.hpp> not found!])])
 
 AC_CHECK_HEADER([tr1/unordered_map],,[AC_MSG_ERROR([<tr1/unordered_map> header not found!])])
-AC_CHECK_HEADER([tr1/memory],,[AC_MSG_ERROR([<tr1/memory> header not found!])])
 
 
 # Checks for typedefs, structures, and compiler characteristics.

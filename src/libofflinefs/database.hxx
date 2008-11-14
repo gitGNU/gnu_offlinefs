@@ -51,10 +51,10 @@ class Buffer{
 
 
 //
-// Class to abstract a table mapping an id of type T into a register
+// Class to abstract a table mapping an id of type IdT into a register
 // Each register maps an attribute name (a string) into an arbitrary data type
 //
-template<typename T>
+template<typename IdT>
 class Database{
       Environment& env;
       DbEnv* dbenv;
@@ -66,22 +66,22 @@ class Database{
       class Txn{
 	    DbTxn* txn;
 	 public:
-	    Txn(Database<T>& db);
+	    Txn(Database<IdT>& db);
 	    ~Txn();
 	    void commit();
 	    void abort();
 	    Dbc* cur;
-	    Database<T>& db;
+	    Database<IdT>& db;
       };
 
       class Register{
 	 private:
-	    typename Database<T>::Txn& txn;
-	    T id;
+	    typename Database<IdT>::Txn& txn;
+	    IdT id;
 	    Buffer mkey(std::string attr);
 	 public:
 	    struct Key{
-		  T id;
+		  IdT id;
 		  char text[];
 	    };
 
@@ -90,12 +90,12 @@ class Database{
 		  EAttrNotFound(std::string attr);
 	    };
 	    
-	    Register(typename Database<T>::Txn& txn, T id);
+	    Register(typename Database<IdT>::Txn& txn, IdT id);
 	    Register(const Register& r);
 	    virtual ~Register();
 	    
-	    T getid() { return id; }
-	    Database<T>& getdb();
+	    IdT getid() { return id; }
+	    Database<IdT>& getdb();
 	    virtual void remove();
 	    
 	    // Get the specified attribute, throw EAttrNotFound if it doesn't exist
@@ -104,19 +104,19 @@ class Database{
 	    // Set the specified attribute
 	    void setattrv(std::string name,const Buffer& v);
 
-	    //Get the specified attribute (as a type S)
+	    //Get the specified attribute (as a type AttrT)
 	    //If the type's size doesn't match the stored one,
 	    //throw std::runtime_exception
-	    template<typename S> S getattr(std::string name);
+	    template<typename AttrT> AttrT getattr(std::string name);
 
 	    //Set the specified attribute
-	    template<typename S> void setattr(std::string name,S v);
+	    template<typename AttrT> void setattr(std::string name,AttrT v);
 
 	    //Delete the attribute "name", throw EAttrNotFound if it
 	    // doesn't exist
 	    void delattr(std::string name);
 
-	    std::list<std::string> getattrs();    
+	    std::list<std::string> getattrs();
       };
 
       Database(Environment& env,std::string name);
@@ -127,9 +127,9 @@ class Database{
       ~Database();
 
       // Initialize a new register, and return its ID
-      T createregister(Txn& txn);
+      IdT createregister(Txn& txn);
 
-      std::list<T> listregisters(Txn& txn);
+      std::list<IdT> listregisters(Txn& txn);
 
 };
 
@@ -137,8 +137,8 @@ class Database{
 template<typename T> T __be_to_cpu(T v);
 template<typename T> T __cpu_to_be(T v);
 
-template<typename T>
-Database<T>::Txn::Txn(Database<T>& db):db(db){
+template<typename IdT>
+Database<IdT>::Txn::Txn(Database<IdT>& db):db(db){
    db.dbenv->txn_begin(NULL,&txn,0);
    try{
       db.db->cursor(txn,&cur,0);
@@ -148,13 +148,13 @@ Database<T>::Txn::Txn(Database<T>& db):db(db){
    }
 }
 
-template<typename T>
-Database<T>::Txn::~Txn(){
+template<typename IdT>
+Database<IdT>::Txn::~Txn(){
    commit();
 }   
 
-template<typename T>
-void Database<T>::Txn::commit(){
+template<typename IdT>
+void Database<IdT>::Txn::commit(){
    if(cur){
       cur->close();
       cur=NULL;
@@ -165,8 +165,8 @@ void Database<T>::Txn::commit(){
    }
 }
 
-template<typename T>
-void Database<T>::Txn::abort(){
+template<typename IdT>
+void Database<IdT>::Txn::abort(){
    if(cur){
       cur->close();
       cur=NULL;
@@ -177,40 +177,66 @@ void Database<T>::Txn::abort(){
    }
 }
 
-template<typename T>
-T Database<T>::createregister(Txn& txn){
-   T id=(T)0;
+template<typename IdT>
+IdT Database<IdT>::createregister(Txn& txn){
+   IdT id=(IdT)0;
    Dbt key;
    Dbt v;
    int err;
 
-   err=txn.cur->get(&key,&v,DB_LAST|DB_RMW);
-   if(err!=DB_NOTFOUND){
-      if(err || key.get_size()<sizeof(typename Register::Key))
-	 throw std::runtime_error("Database::createregister: Error reading from the database.");
+   // Acquire the register creation lock
+   uint32_t locker;
+   DbLock lock;
 
-      id=__cpu_to_be<T>(__be_to_cpu<T>(((typename Register::Key*)key.get_data())->id)+1);
+   dbenv->lock_id(&locker);
+
+   std::string lockname = name + "_createregister_lock";
+   key.set_data((void*)lockname.c_str());
+   key.set_size(lockname.size());
+
+   dbenv->lock_get(locker,0,&key,DB_LOCK_WRITE,&lock);
+
+   try{
+      // Get the last register ID
+      err=txn.cur->get(&key,&v,DB_LAST|DB_RMW);
+      if(err!=DB_NOTFOUND){
+	 if(err || key.get_size()<sizeof(typename Register::Key))
+	    throw std::runtime_error("Database::createregister: Error reading from the database.");
+	 
+	 id=__cpu_to_be<IdT>(__be_to_cpu<IdT>(((typename Register::Key*)key.get_data())->id)+1);
+      }
+
+      // Add a dummy attribute->value mapping to allocate the computed ID
+      key.set_data(&id);
+      key.set_size(sizeof(IdT));
+      v.set_data(NULL);
+      v.set_size(0);
+      txn.cur->put(&key,&v,DB_KEYFIRST);
+   }catch(...){
+      // Release the register creation lock
+      dbenv->lock_put(&lock);
+      dbenv->lock_id_free(locker);
+      throw;
    }
-   key.set_data(&id);
-   key.set_size(sizeof(T));
-   v.set_data(NULL);
-   v.set_size(0);
-   txn.cur->put(&key,&v,DB_KEYFIRST);
+   // Release the register creation lock
+   dbenv->lock_put(&lock);
+   dbenv->lock_id_free(locker);
 
    env.cleanlogs();
+
    return id;
 }
 
-template<typename T>
-std::list<T> Database<T>::listregisters(Txn& txn){
-   T lastid=(T)-1;
+template<typename IdT>
+std::list<IdT> Database<IdT>::listregisters(Txn& txn){
+   IdT lastid=(IdT)-1;
    Dbt k;
    Dbt v;
-   std::list<T> l;
+   std::list<IdT> l;
 
    int err=txn.cur->get(&k,&v,DB_FIRST|DB_RMW);
    while(!err && k.get_size()>=sizeof(typename Register::Key)){
-      T id=((typename Register::Key*)k.get_data())->id;
+      IdT id=((typename Register::Key*)k.get_data())->id;
       if(id!=lastid){
 	 l.push_back(id);
 	 lastid=id;
@@ -223,22 +249,22 @@ std::list<T> Database<T>::listregisters(Txn& txn){
    return l;
 }
 
-template<typename T>
-Database<T>::Database(Environment& env, std::string name):env(env),dbenv(env.dbenv),name(name),db(NULL) {}
+template<typename IdT>
+Database<IdT>::Database(Environment& env, std::string name):env(env),dbenv(env.dbenv),name(name),db(NULL) {}
 
-template<typename T>
-Database<T>::~Database(){
+template<typename IdT>
+Database<IdT>::~Database(){
    close();
 }
 
-template<typename T>
-void Database<T>::open(){
+template<typename IdT>
+void Database<IdT>::open(){
       db=new Db(dbenv,0);
       db->open(NULL,(name+".db").c_str(),NULL,DB_BTREE,DB_AUTO_COMMIT|DB_THREAD,0);
 }
 
-template<typename T>
-void Database<T>::close(){
+template<typename IdT>
+void Database<IdT>::close(){
    if(db){
       db->close(0);
       delete db;
@@ -246,12 +272,16 @@ void Database<T>::close(){
    }
 }
 
-template<typename T>
-void Database<T>::rebuild(){
+template<typename IdT>
+void Database<IdT>::rebuild(){
    close();
+
+   db=new Db(dbenv,0);
+   db->remove((name+".db").c_str(),NULL,0);
+   delete db;
+
    db=new Db(dbenv,0);
    db->open(NULL,(name+".db").c_str(),NULL,DB_BTREE,DB_AUTO_COMMIT|DB_CREATE|DB_THREAD,0);
-   db->truncate(NULL,NULL,0);
 }
 
 #include "register.hxx"

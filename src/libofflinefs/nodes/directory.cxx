@@ -20,7 +20,7 @@ using std::auto_ptr;
 using std::string;
 using std::pair;
 
-Directory::EExists::EExists():runtime_error("Directory::EExists") {}
+Directory::EExists::EExists():runtime_error("The file already exists.") {}
 
 Directory::Directory(FsTxn& txns,uint64_t id):Node(txns,id),rdir(txns.directories,id) {}
 

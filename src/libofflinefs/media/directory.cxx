@@ -19,39 +19,23 @@
 
 using std::auto_ptr;
 using std::string;
-using std::list;
 
-Medium_directory::Medium_directory(libconfig::Setting& conf){
-   if(!conf.lookupValue("label",label)){
-      std::ostringstream os;
-      os << "Medium_directory::Medium_directory: Error parsing config file after line " 
-	 << conf.getSourceLine() << ": \"label\" parameter required.";
-      throw std::runtime_error(os.str());
-   }
-
-   if(!conf.lookupValue("directory",directory)){
-      std::ostringstream os;
-      os << "Medium_directory::Medium_directory: Error parsing config file after line " 
-	 << conf.getSourceLine() << ": \"directory\" parameter required.";
-      throw std::runtime_error(os.str());
-   }
-
-   if(conf.exists("unlink_files")){
-      if(!conf.lookupValue("unlink_files",unlink_files)){
-	 std::ostringstream os;
-	 os << "Medium_directory::Medium_directory: Error parsing config file after line " 
-	    << conf.getSourceLine() << ": \"unlink_files\" requires a boolean value.";
-	 throw std::runtime_error(os.str());
-      }
-   }
+auto_ptr<Medium_directory> Medium_directory::create(FsTxn& txns){
+   auto_ptr<Medium_directory> m(new Medium_directory(txns,txns.dbs.media.createregister(txns.media)));
+   m->setattrv("label",Buffer(""));
+   m->setattrv("type",Buffer("directory"));
+   m->setattrv("directory",Buffer(""));
+   m->setattrv("unlink_files",Buffer("false"));
+   return m;
 }
 
-std::auto_ptr<Chunk> Medium_directory::getchunk(std::string phid,int mode){
-   return std::auto_ptr<Chunk>(new Chunk_file(directory + "/" + phid,mode));
+auto_ptr<Chunk> Medium_directory::getchunk(string phid,int mode){
+   return auto_ptr<Chunk>(new Chunk_file(string(getattrv("directory")) + "/" + phid,mode));
 }
 
 Medium::Stats Medium_directory::getstats(){
    struct statvfs st;
+   string directory = getattrv("directory"); 
    if(statvfs(directory.c_str(),&st))
       throw std::runtime_error("Medium_directory::getstats: error calling statvfs.");
    Stats st_;
@@ -63,6 +47,8 @@ Medium::Stats Medium_directory::getstats(){
 void Medium_directory::addfile(string phid){}
 
 void Medium_directory::delfile(string phid){
-   if(unlink_files)
-      unlink((directory + "/" + phid).c_str());
+   if(string(getattrv("unlink_files")) == "true"){
+      string path = string(getattrv("directory")) + "/" + phid;
+      unlink(path.c_str());
+   }
 }

@@ -23,7 +23,7 @@
 // accessing a file.
 // Attributes:
 //      checkcmd: shell command that will be run before any file operation:
-//                insertscript will be run if it returns non zero.
+//                insertcmd will be run if it returns non zero.
 //                It is supposed to check if the medium is still present.
 //      insertcmd: shell command that will get executed  when the medium
 //                is not present. It is supposed to ask the user and then mount
@@ -32,11 +32,10 @@ class Medium_insert:public Medium_directory{
    private:
       bool check();
       void insert();
-
-      std::string checkcmd;
-      std::string insertcmd;
    public:
-      Medium_insert(libconfig::Setting& conf);
+      Medium_insert(FsTxn& txns,uint32_t id):Medium_directory(txns,id) {}
+
+      static std::auto_ptr<Medium_insert> create(FsTxn& txns);
 
       virtual std::auto_ptr<Chunk> getchunk(std::string phid, int mode);
       virtual Stats getstats();

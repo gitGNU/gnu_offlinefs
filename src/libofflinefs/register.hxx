@@ -15,37 +15,37 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 
-template<typename T> Database<T>::Register::EAttrNotFound::EAttrNotFound(std::string attr):
+template<typename IdT> Database<IdT>::Register::EAttrNotFound::EAttrNotFound(std::string attr):
    runtime_error("Attribute not found: " + attr) {}
 
-template<typename T>
-template<typename S> S Database<T>::Register::getattr(std::string name){
+template<typename IdT>
+template<typename AttrT> AttrT Database<IdT>::Register::getattr(std::string name){
    Buffer b=getattrv(name);
-   if(b.size!=sizeof(S))
+   if(b.size!=sizeof(AttrT))
       throw std::runtime_error("Database::Register::getattr: Sizes do not match.");
-   return __be_to_cpu<S>(*(S*)b.data);
+   return __be_to_cpu<AttrT>(*(AttrT*)b.data);
 }
 
-template<typename T>
-template<typename S> void Database<T>::Register::setattr(std::string name,S v){
-   v = __cpu_to_be<S>(v);
-   Buffer b((char*)&v,sizeof(S));
+template<typename IdT>
+template<typename AttrT> void Database<IdT>::Register::setattr(std::string name,AttrT v){
+   v = __cpu_to_be<AttrT>(v);
+   Buffer b((char*)&v,sizeof(AttrT));
    setattrv(name,b);
 }
 
-template<typename T>
-Database<T>::Register::Register(typename Database<T>::Txn& txn,T id):txn(txn),id(id) {}
+template<typename IdT>
+Database<IdT>::Register::Register(typename Database<IdT>::Txn& txn,IdT id):txn(txn),id(id) {}
 
-template<typename T>
-Database<T>::Register::Register(const Register& r):txn(r.txn),id(r.id) {}
+template<typename IdT>
+Database<IdT>::Register::Register(const Register& r):txn(r.txn),id(r.id) {}
 
-template<typename T>
-Database<T>::Register::~Register(){}
+template<typename IdT>
+Database<IdT>::Register::~Register(){}
 
 
 // Each berkeley DB key stores the concatenation of the ID and the attribute name
-template<typename T>
-Buffer Database<T>::Register::mkey(std::string name){
+template<typename IdT>
+Buffer Database<IdT>::Register::mkey(std::string name){
    Buffer b;
    b.size=sizeof(Key)+name.size();
    b.data=new char[b.size];
@@ -55,8 +55,8 @@ Buffer Database<T>::Register::mkey(std::string name){
    return b;
 }
 
-template<typename T>
-Buffer Database<T>::Register::getattrv(std::string name){
+template<typename IdT>
+Buffer Database<IdT>::Register::getattrv(std::string name){
    Buffer bk=mkey(name);
    Dbt key(bk.data,bk.size);
    Dbt v;
@@ -73,8 +73,8 @@ Buffer Database<T>::Register::getattrv(std::string name){
    return bk;
 }
 
-template<typename T>
-void Database<T>::Register::setattrv(std::string name,const Buffer& bv){
+template<typename IdT>
+void Database<IdT>::Register::setattrv(std::string name,const Buffer& bv){
    Buffer bk=mkey(name);
    Dbt key(bk.data,bk.size);
    Dbt v(bv.data,bv.size);
@@ -85,8 +85,8 @@ void Database<T>::Register::setattrv(std::string name,const Buffer& bv){
    txn.db.env.cleanlogs();
 }
 
-template<typename T>
-void Database<T>::Register::delattr(std::string name){
+template<typename IdT>
+void Database<IdT>::Register::delattr(std::string name){
    Buffer bk=mkey(name);
    Dbt key(bk.data,bk.size);
 
@@ -100,17 +100,17 @@ void Database<T>::Register::delattr(std::string name){
    txn.db.env.cleanlogs();
 }
  
-template<typename T>
-std::list<std::string> Database<T>::Register::getattrs(){
+template<typename IdT>
+std::list<std::string> Database<IdT>::Register::getattrs(){
    std::list<std::string> l;
-   Dbt key(&id,sizeof(T));
+   Dbt key(&id,sizeof(IdT));
    Dbt v;
 
    int err=txn.cur->get(&key,&v,DB_SET_RANGE|DB_RMW);
    
    while(!err && key.get_size()>=sizeof(Key) && ((Key*)key.get_data())->id==id){      
       if(key.get_size()>sizeof(Key))
-	 l.push_back(std::string(((Key*)key.get_data())->text,key.get_size()-sizeof(T)));
+	 l.push_back(std::string(((Key*)key.get_data())->text,key.get_size()-sizeof(IdT)));
       err=txn.cur->get(&key,&v,DB_NEXT|DB_RMW);
    }
    if(err && err!=DB_NOTFOUND)
@@ -119,13 +119,16 @@ std::list<std::string> Database<T>::Register::getattrs(){
    return l;
 }
 
-template<typename T>
-void Database<T>::Register::remove(){
+template<typename IdT>
+void Database<IdT>::Register::remove(){
    std::list<std::string> l=getattrs();
    for(std::list<std::string>::iterator it=l.begin();it!=l.end();it++)
       delattr(*it);
 
-   delattr("");
+   try{
+      delattr("");
+   }catch(EAttrNotFound& e) {}
+
    txn.db.env.cleanlogs();
 }
 

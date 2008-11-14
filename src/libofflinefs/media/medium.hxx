@@ -17,16 +17,23 @@
 #ifndef MEDIA_MEDIUM_HXX
 #define MEDIA_MEDIUM_HXX
 
-#include <libconfig.h++>
-
 #include <common.hxx>
 #include <nodes.hxx>
 #include <fsdb.hxx>
 #include <chunks/chunk.hxx>
 
 // Interface to an object implementing the file data operations
-class Medium{
+class Medium:public Database<uint32_t>::Register{
    public:
+      class ENotImplemented:public std::runtime_error{
+	 public:
+	    ENotImplemented(const std::string& s): runtime_error(s) {}
+      };
+      class ENotFound:public std::runtime_error{
+	 public:
+	    ENotFound(const std::string& s): runtime_error(s) {}
+      };
+
       // Filesystem statistics
       class Stats{
 	 public:
@@ -36,15 +43,29 @@ class Medium{
 	    unsigned long freeblocks;
       };
 
-      static std::auto_ptr<Medium> getmedium(libconfig::Setting& conf);
-      virtual ~Medium() {}
+      Medium(FsTxn& txns,uint32_t id):Register(txns.media,id) {}
 
+      // Instances a medium derived object (depending on the stored
+      // medium type) It can throw ENotFound if the medium does
+      // not exist or ENotImplemented if the stored medium type is not
+      // implemented.
+      static std::auto_ptr<Medium> getmedium(FsTxn& txns, uint32_t id);
+      // The same as above, but looks up the medium by label (very slow)
+      static std::auto_ptr<Medium> getmedium(FsTxn& txns, std::string label);
+      // Initialize a medium of the specified type with some
+      // reasonable default attributes. It throws ENotImplemented if
+      // the type is not implemented.
+      static std::auto_ptr<Medium> create(FsTxn& txns, std::string type);
+
+      // Instantiate a Chunk-derived class that gives access to the
+      // specified phid inside this medium
       virtual std::auto_ptr<Chunk> getchunk(std::string phid, int mode)=0;
 
+      // Return filesystem statistics
       virtual Stats getstats()=0; 
 
-      // Link file f with this medium, phid should be a string that will be used
-      // to locate the file in the medium
+      // Link file f with this medium, phid should be a string that
+      // will be used to identify the file inside the medium
       virtual void addfile(std::string phid)=0;
       virtual void delfile(std::string phid)=0;
 };

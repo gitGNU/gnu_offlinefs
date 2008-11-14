@@ -22,12 +22,13 @@
 #include <grp.h>
 #include <sstream>
 
+// Option processing stuff
+
 struct Params{
       std::string dbroot;
       std::string dbgroup;
       std::string dbumask;
       std::string defmedium;
-      std::string config;
 };
 
 struct CmdParams{
@@ -35,10 +36,11 @@ struct CmdParams{
       const char* dbgroup;
       const char* dbumask;
       const char* defmedium;
-      const char* config;
       bool help;
       bool rebuild;
-} cmdparams={NULL,NULL,NULL,NULL,NULL,false,false};
+};
+
+static CmdParams cmdparams={NULL,NULL,NULL,NULL,false,false};
 
 enum{
    KEY_VERSION,
@@ -51,7 +53,6 @@ struct fuse_opt opts[] ={
    {"dbgroup=%s",offsetof(CmdParams,dbgroup),0},
    {"dbumask=%s",offsetof(CmdParams,dbumask),0},
    {"defmedium=%s",offsetof(CmdParams,defmedium),0},
-   {"config=%s",offsetof(CmdParams,config),0},
    FUSE_OPT_KEY("-V", KEY_VERSION),
    FUSE_OPT_KEY("--version", KEY_VERSION),
    FUSE_OPT_KEY("-h", KEY_HELP),
@@ -60,7 +61,7 @@ struct fuse_opt opts[] ={
    {NULL,0,0}
 };
 
-void usage(){
+static void usage(){
    std::cerr << "usage: offlinefs [mountpoint] [options]\n";
    std::cerr << "\n";
    std::cerr << "offlinefs options:\n";
@@ -70,12 +71,11 @@ void usage(){
    std::cerr << "\t-o dbgroup=<dbroot>\tDatabase group\n";
    std::cerr << "\t-o dbumask=<dbroot>\tDatabase umask (octal)\n";
    std::cerr << "\t-o defmedium=<medium id> Default medium a file is created in\n";
-   std::cerr << "\t-o config=<path>\tConfiguration file\n";
    std::cerr << "\t--rebuilddb\t\tRebuild DB mode\n";
    std::cerr << std::endl;
 }
 
-void version(){
+static void version(){
    std::cerr << "offlinefs version: " << VERSION << "\n"\
       "Copyright (C) 2008 Francisco Jerez\n"				\
       "This program is free software: you can redistribute it and/or modify\n" \
@@ -94,7 +94,7 @@ void version(){
       
 }
 
-int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
+static int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
    if(key==KEY_VERSION){
       version();      
       ((CmdParams*)data)->help=true;
@@ -111,116 +111,118 @@ int opt_proc(void* data, const char* arg, int key, struct fuse_args* outargs){
       return 1;
 }
 
-void* init_(fuse_conn_info* conn){
+// Glue to relay the FS operations to a C++ object
+
+static void* init_(fuse_conn_info* conn){
    Params* p=(Params*)fuse_get_context()->private_data;
-   return new FS(p->dbroot,p->defmedium,p->config);
+   return new FS(p->dbroot,p->defmedium);
 }
 
-void destroy_(void *userdata){
+static void destroy_(void *userdata){
    delete (FS*)fuse_get_context()->private_data;
 }
 
-int getattr_(const char* path, struct stat* st){
+static int getattr_(const char* path, struct stat* st){
   return ((FS*)fuse_get_context()->private_data)->getattr(path,st);
 }
 
-int readdir_(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info* fi){
+static int readdir_(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info* fi){
   return ((FS*)fuse_get_context()->private_data)->readdir(path,buf,filler,offset,fi);
 }
 
-int readlink_(const char* path, char* buf, size_t bufsiz){
+static int readlink_(const char* path, char* buf, size_t bufsiz){
    return ((FS*)fuse_get_context()->private_data)->readlink(path,buf,bufsiz);
 }
 
-int mknod_(const char* path , mode_t mode, dev_t dev){
+static int mknod_(const char* path , mode_t mode, dev_t dev){
    return ((FS*)fuse_get_context()->private_data)->mknod(path,mode,dev);
 }
 
-int mkdir_(const char* path, mode_t mode){
+static int mkdir_(const char* path, mode_t mode){
    return ((FS*)fuse_get_context()->private_data)->mkdir(path,mode);
 }
 
-int unlink_(const char* path){
+static int unlink_(const char* path){
    return ((FS*)fuse_get_context()->private_data)->unlink(path);
 }
 
-int rmdir_(const char* path){
+static int rmdir_(const char* path){
    return ((FS*)fuse_get_context()->private_data)->rmdir(path);
 }
 
-int symlink_(const char* oldpath, const char* newpath){
+static int symlink_(const char* oldpath, const char* newpath){
    return ((FS*)fuse_get_context()->private_data)->symlink(oldpath,newpath);
 }
  
-int rename_(const char* oldpath, const char* newpath){
+static int rename_(const char* oldpath, const char* newpath){
    return ((FS*)fuse_get_context()->private_data)->rename(oldpath,newpath);
 }
 
-int link_(const char* oldpath, const char* newpath){
+static int link_(const char* oldpath, const char* newpath){
    return ((FS*)fuse_get_context()->private_data)->link(oldpath,newpath);
 }
 
-int chmod_(const char* path, mode_t mode){
+static int chmod_(const char* path, mode_t mode){
    return ((FS*)fuse_get_context()->private_data)->chmod(path,mode);
 }
 
-int chown_(const char* path, uid_t owner, gid_t group){
+static int chown_(const char* path, uid_t owner, gid_t group){
    return ((FS*)fuse_get_context()->private_data)->chown(path,owner,group);
 }
 
-int truncate_(const char* path, off_t length){
+static int truncate_(const char* path, off_t length){
    return ((FS*)fuse_get_context()->private_data)->truncate(path,length);
 }
 
-int open_(const char* path, struct fuse_file_info* fi){
+static int open_(const char* path, struct fuse_file_info* fi){
    return ((FS*)fuse_get_context()->private_data)->open(path,fi);
 }
 
-int read_(const char* path, char* buf, size_t nbyte, off_t offset, struct fuse_file_info* fi){
+static int read_(const char* path, char* buf, size_t nbyte, off_t offset, struct fuse_file_info* fi){
    return ((FS*)fuse_get_context()->private_data)->read(path,buf,nbyte,offset,fi);
 }
 
-int write_(const char* path, const char* buf, size_t nbyte, off_t offset, struct fuse_file_info* fi){
+static int write_(const char* path, const char* buf, size_t nbyte, off_t offset, struct fuse_file_info* fi){
    return ((FS*)fuse_get_context()->private_data)->write(path,buf,nbyte,offset,fi);
 }
 
-int statfs_(const char* path, struct statvfs* buf){
+static int statfs_(const char* path, struct statvfs* buf){
    return ((FS*)fuse_get_context()->private_data)->statfs(path,buf);
 }
 
-int flush_(const char* path, struct fuse_file_info* fi){
+static int flush_(const char* path, struct fuse_file_info* fi){
    return ((FS*)fuse_get_context()->private_data)->flush(path,fi);
 }
 
-int release_(const char* path, struct fuse_file_info* fi){
+static int release_(const char* path, struct fuse_file_info* fi){
    return ((FS*)fuse_get_context()->private_data)->release(path,fi);
 }
 
-int fsync_(const char* path, int datasync, struct fuse_file_info* fi){
+static int fsync_(const char* path, int datasync, struct fuse_file_info* fi){
    return ((FS*)fuse_get_context()->private_data)->fsync(path,datasync,fi);
 }
 
-int setxattr_(const char* path, const char* name, const char* value, size_t size, int flags){
+static int setxattr_(const char* path, const char* name, const char* value, size_t size, int flags){
    return ((FS*)fuse_get_context()->private_data)->setxattr(path,name,value,size,flags);
 }
 
-int getxattr_(const char* path, const char* name, char* value, size_t size){
+static int getxattr_(const char* path, const char* name, char* value, size_t size){
    return ((FS*)fuse_get_context()->private_data)->getxattr(path,name,value,size);
 }
 
-int listxattr_(const char* path , char* list, size_t size){
+static int listxattr_(const char* path , char* list, size_t size){
    return ((FS*)fuse_get_context()->private_data)->listxattr(path,list,size);
 }
 
-int removexattr_(const char* path, const char* name){
+static int removexattr_(const char* path, const char* name){
    return ((FS*)fuse_get_context()->private_data)->removexattr(path,name);
 }
 
-int utimens_(const char* path, const struct timespec tv[2]){
+static int utimens_(const char* path, const struct timespec tv[2]){
    return ((FS*)fuse_get_context()->private_data)->utimens(path,tv);
 }
 
-int access_(const char* path, int mode){
+static int access_(const char* path, int mode){
    return ((FS*)fuse_get_context()->private_data)->access(path,mode);
 }
 
@@ -270,49 +272,6 @@ int main(int argc, char** argv){
    // Default parameters
    if(getenv("HOME")){
       params.dbroot=std::string(getenv("HOME"))+"/.offlinefs/";
-      params.config=std::string(getenv("HOME"))+"/.offlinefs/offlinefs.conf";
-   }
-
-   // Parameters from config file
-   if(cmdparams.config)
-      params.config = cmdparams.config;
-
-   libconfig::Config conf;
-   try{
-      conf.readFile(params.config.c_str());
-
-      if(conf.exists("dbroot")){
-	 if(!conf.lookupValue("dbroot",params.dbroot)){
-	    std::cerr << "Error parsing configuration file option \"dbroot\": String expected.\n";
-	    return 1;
-	 }
-      }
-
-      if(conf.exists("dbgroup")){
-	 if(!conf.lookupValue("dbgroup",params.dbgroup)){
-	    std::cerr << "Error parsing configuration file option \"dbgroup\": String expected.\n";
-	    return 1;
-	 }
-      }
-
-      if(conf.exists("dbumask")){
-	 if(!conf.lookupValue("dbumask",params.dbumask)){
-	    std::cerr << "Error parsing configuration file option \"dbumask\": String expected.\n";
-	    return 1;
-	 }
-      }
-
-      if(conf.exists("defmedium")){
-	 if(!conf.lookupValue("defmedium",params.defmedium)){
-	    std::cerr << "Error parsing configuration file option \"defmedium\": String expected.\n";
-	    return 1;
-	 }
-      }
-   }catch(libconfig::FileIOException& e){
-   }catch(libconfig::ParseException& e){
-      std::cerr << "Error parsing the configuration file (line " << e.getLine() << "): "
-		<< e.getError() << "\n";
-      return 1;
    }
 
    // Parameters from command line
@@ -364,12 +323,13 @@ int main(int argc, char** argv){
       
       if(cmdparams.rebuild){
 	 std::cerr << "Rebuilding database at " << params.dbroot << " ...\n";
-	 FsDb(params.dbroot,params.config).rebuild();
+	 FsDb(params.dbroot).rebuild();
 	 std::cerr << "Done.\n";
 	 return 0;
       }
    }
-   
+
+   // Main loop
    int err = fuse_main(args.argc, args.argv,&ops,&params);
    
    fuse_opt_free_args(&args);

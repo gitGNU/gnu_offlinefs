@@ -20,11 +20,11 @@
 using std::string;
 
 Source_single::Source_single(File& f,int mode):Source(f,mode){
-   chunk = dbs.mcache.getmedium(f.getattrv("offlinefs.medium"))->getchunk(f.getattrv("offlinefs.phid"),mode);
+   chunk = Medium::getmedium(f.txns,f.getattr<uint32_t>("offlinefs.mediumid"))->getchunk(f.getattrv("offlinefs.phid"),mode);
 }
 
 void Source_single::remove(File& f){
-   f.txns.dbs.mcache.getmedium(f.getattrv("offlinefs.medium"))->delfile(f.getattrv("offlinefs.phid"));
+   Medium::getmedium(f.txns, f.getattr<uint32_t>("offlinefs.mediumid"))->delfile(f.getattrv("offlinefs.phid"));
 }
 
 int Source_single::read(char* buf, size_t nbyte, off_t offset){

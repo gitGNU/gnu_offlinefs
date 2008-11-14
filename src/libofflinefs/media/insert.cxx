@@ -21,20 +21,14 @@ using std::auto_ptr;
 using std::string;
 using std::list;
 
-Medium_insert::Medium_insert(libconfig::Setting& conf): Medium_directory(conf){
-   if(!conf.lookupValue("checkcmd",checkcmd)){
-      std::ostringstream os;
-      os << "Medium_insert::Medium_insert: Error parsing config file after line " 
-	 << conf.getSourceLine() << ": \"checkcmd\" parameter required.";
-      throw std::runtime_error(os.str());
-   }
+auto_ptr<Medium_insert> Medium_insert::create(FsTxn& txns){
+   auto_ptr<Medium_directory> m(Medium_directory::create(txns));
 
-   if(!conf.lookupValue("insertcmd",insertcmd)){
-      std::ostringstream os;
-      os << "Medium_insert::Medium_insert: Error parsing config file after line " 
-	 << conf.getSourceLine() << ": \"insertcmd\" parameter required.";
-      throw std::runtime_error(os.str());
-   }
+   m->setattrv("type",Buffer("insert"));
+   m->setattrv("checkcmd",Buffer(""));
+   m->setattrv("insertcmd",Buffer(""));
+
+   return auto_ptr<Medium_insert>(new Medium_insert(txns,m->getid()));
 }
 
 std::auto_ptr<Chunk> Medium_insert::getchunk(std::string phid, int mode){
@@ -52,12 +46,13 @@ void Medium_insert::addfile(string phid){
 }
 
 void Medium_insert::delfile(string phid){
-   if(unlink_files)
+   if(string(getattrv("unlink_files")) == "true")
       insert();
    Medium_directory::delfile(phid);
 }
 
 bool Medium_insert::check(){
+   string checkcmd = getattrv("checkcmd");
    int err=system(checkcmd.c_str());
    if(err==-1)
       throw std::runtime_error("Medium_insert::check: error calling system.");
@@ -66,6 +61,7 @@ bool Medium_insert::check(){
 
 void Medium_insert::insert(){
    if(!check()){
+      string insertcmd = getattrv("insertcmd");
       int err=system(insertcmd.c_str());
       if(err==-1)
 	 throw std::runtime_error("Medium_insert::insert: error calling system.");

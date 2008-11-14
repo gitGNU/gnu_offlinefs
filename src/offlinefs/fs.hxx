@@ -47,7 +47,7 @@ class FS{
       int errcode(std::exception& e);
 
    public:
-      FS(std::string dbroot, std::string defmedium, std::string config);
+      FS(std::string dbroot, std::string defmedium);
       ~FS();
 
       int getattr(const char* path, struct stat* st);

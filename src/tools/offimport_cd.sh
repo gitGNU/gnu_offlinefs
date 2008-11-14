@@ -16,13 +16,12 @@
 #     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 usage(){
-    echo "usage: offimport_cd.sh -i <cdroot> -l <label> [-s <insertion script>] [-b <dbroot>] [-p <prefix>] [-f <config file>]"
+    echo "usage: offimport_cd.sh -i <cdroot> -l <label> [-s <insertion script>] [-b <dbroot>] [-p <prefix>]"
     echo "Import a directory tree (<cdroot>) into the offlinefs with database at <dbroot>, prefixing each path with <prefix>. <insert script> will get called when trying to access any of the imported files."
     exit 1
 }
 
 dbroot="$HOME/.offlinefs" 
-config="$HOME/.offlinefs/offlinefs.conf"
 insert="/usr/local/etc/offlinefs/insert"
 cdroot=""
 label=""
@@ -51,9 +50,17 @@ echo "prefix: $prefix"
 
 echo "Adding medium to the database..."
 fingerprint=`stat -f -c %a%b%c%d%f%i%l%s%S%t $cdroot`
-offmedia --add insert --directory "$cdroot" --label "$label" --checkcmd "test $fingerprint = \`stat -f -c %a%b%c%d%f%i%l%s%S%t $cdroot\`" --insertscript $insert $dbroot ||exit
-mid=`offmedia --list $dbroot |grep -a "#MEDIUM: " |sed "s/#MEDIUM: //" |tail -1 `
+
+if (offmedia --dbroot "$dbroot" --label "$label" --list |grep "[medium]" >> /dev/null); then
+    echo "$0: Error: Specified label \"$label\" already exists."
+    exit 1
+fi
+
+offmedia --dbroot "$dbroot" --label "$label" --add insert || exit 1
+offmedia --dbroot "$dbroot" --label "$label" --set directory "$cdroot" || exit 1
+offmedia --dbroot "$dbroot" --label "$label" --set checkcmd "test $fingerprint = \`stat -f -c %a%b%c%d%f%i%l%s%S%t $cdroot\`" || exit 1
+offmedia --dbroot "$dbroot" --label "$label" --set insertcmd "$insert \"$label\" \"$cdroot\"" || exit 1
 
 echo "Adding files to the database..."
-find $cdroot -printf '%U %G %m %y %A@ %T@ %s %P //// %l\n' |awk 'NR!=1 {print $0}' |offimport -c -M $mid -b "$dbroot" -p "$prefix" -f  '%U %G %m %y %A@ %T@ %s %P //// %l'
+find $cdroot -printf '%U %G %m %y %A@ %T@ %s %P //// %l\n' |awk 'NR!=1 {print $0}' |offimport -c -M "$label" -b "$dbroot" -p "$prefix" -f  '%U %G %m %y %A@ %T@ %s %P //// %l'
 echo "Done"

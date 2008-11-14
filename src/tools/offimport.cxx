@@ -23,10 +23,8 @@
 #include <iomanip>
 #include <boost/program_options.hpp>
 #include <signal.h>
-#include <stdio.h>
 #include <grp.h>
 #include <pwd.h>
-#include <libconfig.h++>
 
 #include <fsdb.hxx>
 #include <nodes.hxx>
@@ -42,7 +40,7 @@ using std::runtime_error;
 using std::istringstream;
 using std::exception;
 using std::tr1::unordered_map;
-using std::tr1::shared_ptr;
+
 namespace po=boost::program_options;
 
 void sigint_handler(int){
@@ -81,8 +79,7 @@ struct FMap{
 };
 
 int main(int argc, char** argv){
-   libconfig::Config conf;
-   string dbroot,config;
+   string dbroot;
 
    // Command line parsing
    po::options_description desc("Options");
@@ -91,11 +88,10 @@ int main(int argc, char** argv){
       ("version,V","Print version")
       ("create,c","Allow creating new files")
       ("modify,m","Allow modifying already existing files")
-      ("medium,M",po::value<uint32_t>(),"Associate every created file with the medium <arg>, using the input path as phid.")
+      ("medium,M",po::value<string>(),"Associate every created file with the medium labeled <arg>, using the input path as phid.")
       ("dbroot,b",po::value<string>(),"Database root")
       ("format,f",po::value<string>(),"Input format string")
-      ("prefix,p",po::value<string>(),"Path where the input tree will be reproduced")
-      ("config",po::value<string>(),"Configuration file");
+      ("prefix,p",po::value<string>(),"Path where the input tree will be reproduced");
    
    po::positional_options_description pdesc;
    po::variables_map vm;
@@ -156,29 +152,8 @@ int main(int argc, char** argv){
    char* home=getenv("HOME");
    if(home){
       dbroot = string(home)+"/.offlinefs/";
-      config = string(home)+"/.offlinefs/offlinefs.conf";
    }
    
-   // Parameters from config file
-   if(vm.count("config"))
-      config = vm["config"].as<string>();
-
-   try{
-      conf.readFile(config.c_str());
-
-      if(conf.exists("dbroot")){
-	 if(!conf.lookupValue("dbroot",dbroot)){
-	    std::cerr << "Error parsing configuration file option \"dbroot\": String expected.\n";
-	    return 1;
-	 }
-      }
-   }catch(libconfig::FileIOException& e){
-   }catch(libconfig::ParseException& e){
-      std::cerr << "Error parsing the configuration file (line " << e.getLine() << "): "
-		<< e.getError() << "\n";
-      return 1;
-   }
-
    // Parameters from command line
    if(vm.count("dbroot"))
       dbroot=vm["dbroot"].as<string>();
@@ -217,12 +192,15 @@ int main(int argc, char** argv){
    sigaction(SIGINT,&sact,NULL);
 
    // Initialize the filesystem access objects
-   FsDb dbs(dbroot,config);
+   FsDb dbs(dbroot);
    dbs.open();
 
-   shared_ptr<Medium> medium;
+   FsTxn mtxns(dbs);
+   auto_ptr<Medium> medium;
    if(vm.count("medium"))
-      medium=dbs.mcache.getmedium(vm["medium"].as<string>());
+      medium=Medium::getmedium(mtxns,vm["medium"].as<string>());
+   else
+      mtxns.abort();
 
    SContext sctx(0,0);
    PathCache_hash pcache;
@@ -321,13 +299,17 @@ int main(int argc, char** argv){
 		     medium->addfile(path);
 
 		     n->setattrv("offlinefs.source",string("single"));
-		     n->setattrv("offlinefs.medium",vm["medium"].as<string>());
+		     n->setattr<uint32_t>("offlinefs.mediumid",medium->getid());
 		     n->setattrv("offlinefs.phid",path);
 		  }
 
 	       }else if(nodetype == S_IFDIR){
 		  Path<Directory> p(txns,sctx,pcache,prefix+path);
-		  n=p.create(txns,sctx);
+		  auto_ptr<Directory> d=p.create(txns,sctx);
+
+		  d->addchild("..",*p.parent);
+
+		  n=d;
 
 	       }else if(nodetype == S_IFLNK){
 		  Path<Symlink> p(txns,sctx,pcache,prefix+path);

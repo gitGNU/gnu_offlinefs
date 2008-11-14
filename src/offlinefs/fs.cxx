@@ -21,7 +21,6 @@
 #define MIN(a,b) (a<b?a:b)
 
 using std::auto_ptr;
-using std::tr1::shared_ptr;
 using std::string;
 using std::exception;
 using std::list;
@@ -34,11 +33,13 @@ auto_ptr<Source> FS::getsource(File& f,std::string phid,int flags){
    try{
       return Source::getsource(f,flags);
    }catch(Node::EAttrNotFound& e){
-      dbs.mcache.getmedium(defmedium)->addfile(phid);
+      auto_ptr<Medium> m=Medium::getmedium(f.txns,defmedium);
 
-      f.setattrv("offlinefs.source",string("single"));
-      f.setattrv("offlinefs.medium",defmedium);
-      f.setattrv("offlinefs.phid",phid);
+      m->addfile(phid);
+
+      f.setattrv("offlinefs.source",Buffer("single"));
+      f.setattr<uint32_t>("offlinefs.mediumid",m->getid());
+      f.setattrv("offlinefs.phid",Buffer(phid));
 
       return Source::getsource(f,flags);
    }
@@ -63,7 +64,7 @@ int FS::errcode(exception& e){
    }
 }
 
-FS::FS(string dbroot,string defmedium,string config):dbs(dbroot,config),defmedium(defmedium) {
+FS::FS(string dbroot,string defmedium):dbs(dbroot),defmedium(defmedium) {
    memset(openFiles,0,sizeof(openFiles));
    dbs.open();
    if(pthread_mutex_init(&openmutex,NULL))
@@ -165,6 +166,7 @@ int FS::mkdir(const char* path, mode_t mode){
       Path<Directory> p(txns,sctx,pcache,path);
 
       auto_ptr<Directory> n=p.create(txns,sctx);
+      n->addchild("..",*p.parent);
 
       n->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
       n->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
@@ -399,12 +401,14 @@ int FS::write(const char* path, const char* buf, size_t nbyte, off_t offset, str
 
 int FS::statfs(const char* path, struct statvfs* buf){
    try{
+      FsTxn txns(dbs);
       Medium::Stats st;
 
-      list<shared_ptr<Medium> > ms = dbs.mcache.list();
-      for(list<shared_ptr<Medium> >::iterator it=ms.begin();
+      list<uint32_t> ms = dbs.media.listregisters(txns.media);
+      for(list<uint32_t>::iterator it=ms.begin();
 	  it!=ms.end(); it++){
-	 Medium::Stats st_=(*it)->getstats();
+	 Medium::Stats st_=(Medium::getmedium(txns, *it))->getstats();
+
 	 st.blocks+=st_.blocks;
 	 st.freeblocks+=st_.freeblocks;
       }
