@@ -288,39 +288,44 @@ int main(int argc, char** argv){
 	       }catch(Node::ENotFound& e){}
 	    }
 	    if(!n.get() && allow_create){
-	       if(!nodetype)
-		  nodetype=S_IFREG;
+	       try{
+		  if(!nodetype)
+		     nodetype=S_IFREG;
 
-	       if(nodetype == S_IFREG){
-		  Path<File> p(txns,sctx,pcache,prefix+path);
-		  n=p.create(txns,sctx);
+		  if(nodetype == S_IFREG){
+		     Path<File> p(txns,sctx,pcache,prefix+path);
+		     n=p.create(txns,sctx);
 
-		  if(medium.get()){
-		     medium->addfile(path);
+		     if(medium.get()){
+			medium->addfile(path);
 
-		     n->setattrv("offlinefs.source",string("single"));
-		     n->setattr<uint32_t>("offlinefs.mediumid",medium->getid());
-		     n->setattrv("offlinefs.phid",path);
+			n->setattrv("offlinefs.source",string("single"));
+			n->setattr<uint32_t>("offlinefs.mediumid",medium->getid());
+			n->setattrv("offlinefs.phid",path);
+		     }
+
+		  }else if(nodetype == S_IFDIR){
+		     Path<Directory> p(txns,sctx,pcache,prefix+path);
+		     auto_ptr<Directory> d=p.create(txns,sctx);
+
+		     d->addchild("..",*p.parent);
+
+		     n=d;
+
+		  }else if(nodetype == S_IFLNK){
+		     Path<Symlink> p(txns,sctx,pcache,prefix+path);
+		     n=p.create(txns,sctx);
+
+		  }else{
+		     Path<Node> p(txns,sctx,pcache,prefix+path);
+		     n=p.create(txns,sctx);
 		  }
 
-	       }else if(nodetype == S_IFDIR){
-		  Path<Directory> p(txns,sctx,pcache,prefix+path);
-		  auto_ptr<Directory> d=p.create(txns,sctx);
-
-		  d->addchild("..",*p.parent);
-
-		  n=d;
-
-	       }else if(nodetype == S_IFLNK){
-		  Path<Symlink> p(txns,sctx,pcache,prefix+path);
-		  n=p.create(txns,sctx);
-
-	       }else{
-		  Path<Node> p(txns,sctx,pcache,prefix+path);
-		  n=p.create(txns,sctx);
+		  creating=true;
+	       }catch(Directory::EExists& e){
+		  std::cerr << "Skipping \"" << path << "\": File exists.\n";
+		  continue;
 	       }
-
-	       creating=true;
 	    }
 	 }
 	 if(!n.get())

@@ -5,10 +5,14 @@
 # as a different user
 #set_user="username"
 
+if [ -e /etc/profile ]; then
+    . /etc/profile
+fi
+
 export DISPLAY=:0.0
 [ -n "$set_user" ] && export XAUTHORITY=/home/$set_user/.Xauthority 
 
-DIALOG="kdialog --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
+DIALOG="`which kdialog` --warningcontinuecancel \"Insert volume: \\\"$1\\\"\" --name offlinefs --caption offlinefs"
 MOUNT="mount $2"
 if [ -n "$set_user" ]; then 
     su -c "$DIALOG && $MOUNT" $set_user

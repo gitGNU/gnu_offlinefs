@@ -277,7 +277,9 @@ void Database<IdT>::rebuild(){
    close();
 
    db=new Db(dbenv,0);
-   db->remove((name+".db").c_str(),NULL,0);
+   try{
+      db->remove((name+".db").c_str(),NULL,0);
+   }catch(...) {}
    delete db;
 
    db=new Db(dbenv,0);
