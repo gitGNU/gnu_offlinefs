@@ -1,2 +1,2 @@
 sysconf_offlinefsdir=$(sysconfdir)/offlinefs
-dist_sysconf_offlinefs_DATA=insert
+dist_sysconf_offlinefs_SCRIPTS=insert

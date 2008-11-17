@@ -45,7 +45,7 @@ auto_ptr<Node> Node::create(FsTxn& txns){
 }
 
 void Node::link(){
-   setattr<off::nlink_t>("offlinefs.nlink",1+getattr<nlink_t>("offlinefs.nlink"));
+   setattr<off::nlink_t>("offlinefs.nlink",1+getattr<off::nlink_t>("offlinefs.nlink"));
 }
 
 void Node::unlink(){

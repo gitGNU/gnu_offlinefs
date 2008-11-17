@@ -14,6 +14,9 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef TYPES_HXX
+#define TYPES_HXX
+
 namespace offlinefs{
    typedef uint64_t time_t;
    typedef uint32_t nlink_t;
@@ -23,3 +26,5 @@ namespace offlinefs{
    typedef uint64_t off_t;
    typedef uint64_t dev_t;
 }
+
+#endif
