@@ -16,12 +16,14 @@
 
 #include "source.hxx"
 #include "single.hxx"
+#include "types.hxx"
 
 using std::string;
 using std::auto_ptr;
+namespace off = offlinefs;
 
 Source::Source(File& f,int mode):dbs(f.txns.dbs),fileid(f.getid()),size(0),mode(mode) {
-   size=f.getattr<off_t>("offlinefs.size");
+   size=f.getattr<off::off_t>("offlinefs.size");
 }
 
 auto_ptr<Source> Source::getsource(File& f,int mode){

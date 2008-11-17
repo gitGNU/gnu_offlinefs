@@ -15,10 +15,12 @@
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "directory.hxx"
+#include "types.hxx"
 
 using std::auto_ptr;
 using std::string;
 using std::pair;
+namespace off = offlinefs;
 
 Directory::EExists::EExists():runtime_error("The file already exists.") {}
 
@@ -61,7 +63,7 @@ void Directory::remove(){
 
 std::auto_ptr<Directory> Directory::create(FsTxn& txns){
    auto_ptr<Directory> n(new Directory(txns,Node::create(txns)->getid()));
-   n->setattr<mode_t>("offlinefs.mode",S_IFDIR);
+   n->setattr<off::mode_t>("offlinefs.mode",S_IFDIR);
    n->addchild(".",*n);
    return n;
 }

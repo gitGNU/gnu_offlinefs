@@ -18,7 +18,6 @@
 #define DATABASE_HXX
 
 #include "common.hxx"
-#include <asm/byteorder.h>
 
 class Environment{
       unsigned int opcount;
@@ -75,44 +74,48 @@ class Database{
       };
 
       class Register{
+	    friend class Database<IdT>;
 	 private:
 	    typename Database<IdT>::Txn& txn;
 	    IdT id;
-	    Buffer mkey(std::string attr);
-	 public:
+
 	    struct Key{
 		  IdT id;
 		  char text[];
 	    };
 
+	    Buffer getkey(std::string attr);
+	 public:
 	    class EAttrNotFound:public std::runtime_error{
 	       public:
 		  EAttrNotFound(std::string attr);
 	    };
-	    
+
 	    Register(typename Database<IdT>::Txn& txn, IdT id);
 	    Register(const Register& r);
 	    virtual ~Register();
-	    
+
 	    IdT getid() { return id; }
 	    Database<IdT>& getdb();
+
 	    virtual void remove();
-	    
-	    // Get the specified attribute, throw EAttrNotFound if it doesn't exist
+
+	    // Get the specified attribute, throw EAttrNotFound if it
+	    // doesn't exist
 	    Buffer getattrv(std::string name);
 
 	    // Set the specified attribute
 	    void setattrv(std::string name,const Buffer& v);
 
-	    //Get the specified attribute (as a type AttrT)
-	    //If the type's size doesn't match the stored one,
-	    //throw std::runtime_exception
+	    // Get the specified attribute (as a type AttrT) If the
+	    // type's size doesn't match the stored one, throw
+	    // std::runtime_exception
 	    template<typename AttrT> AttrT getattr(std::string name);
 
-	    //Set the specified attribute
+	    // Set the specified attribute
 	    template<typename AttrT> void setattr(std::string name,AttrT v);
 
-	    //Delete the attribute "name", throw EAttrNotFound if it
+	    // Delete the attribute "name", throw EAttrNotFound if it
 	    // doesn't exist
 	    void delattr(std::string name);
 
@@ -122,7 +125,7 @@ class Database{
       Database(Environment& env,std::string name);
       void open();
       void close();
-      //Erase the contents of the database
+      // Erase the contents of the database
       void rebuild();
       ~Database();
 
@@ -134,8 +137,10 @@ class Database{
 };
 
 // Endianness conversion functions
-template<typename T> T __be_to_cpu(T v);
-template<typename T> T __cpu_to_be(T v);
+template<typename T> T host_to_db(T v);
+template<typename T> T db_to_host(T v);
+
+#include "register.hxx"
 
 template<typename IdT>
 Database<IdT>::Txn::Txn(Database<IdT>& db):db(db){
@@ -201,9 +206,12 @@ IdT Database<IdT>::createregister(Txn& txn){
       err=txn.cur->get(&key,&v,DB_LAST|DB_RMW);
       if(err!=DB_NOTFOUND){
 	 if(err || key.get_size()<sizeof(typename Register::Key))
-	    throw std::runtime_error("Database::createregister: Error reading from the database.");
-	 
-	 id=__cpu_to_be<IdT>(__be_to_cpu<IdT>(((typename Register::Key*)key.get_data())->id)+1);
+	    throw std::runtime_error("Database::createregister:"
+				     " Error reading from the database.");
+
+	 id=host_to_db<IdT>(
+	    db_to_host<IdT>(
+	       ((typename Register::Key*)key.get_data())->id)+1);
       }
 
       // Add a dummy attribute->value mapping to allocate the computed ID
@@ -285,7 +293,5 @@ void Database<IdT>::rebuild(){
    db=new Db(dbenv,0);
    db->open(NULL,(name+".db").c_str(),NULL,DB_BTREE,DB_AUTO_COMMIT|DB_CREATE|DB_THREAD,0);
 }
-
-#include "register.hxx"
 
 #endif

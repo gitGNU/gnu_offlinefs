@@ -63,15 +63,11 @@ int Chunk_file::flush(){
    return 0;
 }
 
-static inline int fsync_(int fd){
-   return fsync(fd);
-}
-
 int Chunk_file::fsync(int datasync){
    if(datasync)
       return fdatasync(fd);
    else{
-      return fsync_(fd);
+      return ::fsync(fd);
    }
 }
 

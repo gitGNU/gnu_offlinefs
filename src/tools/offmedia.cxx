@@ -215,8 +215,8 @@ int main(int argc, char** argv){
 	    auto_ptr<Medium> m = Medium::getmedium(txns,*mid);
 
 	    // Filter by label/id
-	    if(vm.count("label") && string(m->getattrv("label")) != vm["label"].as<string>() ||
-	       vm.count("id") && *mid != vm["id"].as<uint32_t>())
+	    if((vm.count("label") && string(m->getattrv("label")) != vm["label"].as<string>()) ||
+	       (vm.count("id") && *mid != vm["id"].as<uint32_t>()))
 	       continue;
 
 	    if(vm.count("verbose"))

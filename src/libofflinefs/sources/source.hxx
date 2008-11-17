@@ -19,13 +19,14 @@
 
 #include <common.hxx>
 #include <nodes.hxx>
+#include "types.hxx"
 
 // Class implementing the highest level file IO
 class Source{
    protected:
       FsDb& dbs;
       uint64_t fileid;
-      off_t size;
+      offlinefs::off_t size;
       int mode;
    public:
       Source(File& f,int mode);

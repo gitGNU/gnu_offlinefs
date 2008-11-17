@@ -16,11 +16,13 @@
 
 #include <pathcache.hxx>
 #include <nodes.hxx>
+#include "types.hxx"
 
 using std::string;
 using std::auto_ptr;
 using std::list;
 using std::pair;
+namespace off = offlinefs;
 
 std::auto_ptr<Node> PathCache_null::getnode(FsTxn& txns,const SContext& sctx, std::string path){
    auto_ptr<Node> n = Node::getnode(txns,0);
@@ -100,7 +102,7 @@ PathCache_hash::Cache::iterator PathCache_hash::promoteRoot(FsTxn& txns){
 void PathCache_hash::checkaccess(FsTxn& txns,const SContext& sctx,PathCache_hash::CElem& ce){
    if(!ce.access){
       Node n(txns,ce.nodeid);
-      ce.access=new Access(n.getattr<uid_t>("offlinefs.uid"),n.getattr<gid_t>("offlinefs.gid"),n.getattr<mode_t>("offlinefs.mode"));
+      ce.access=new Access(n.getattr<off::uid_t>("offlinefs.uid"),n.getattr<off::gid_t>("offlinefs.gid"),n.getattr<off::mode_t>("offlinefs.mode"));
    }
    if(!(sctx.uid==0 || ce.access->mode&S_IXOTH ||
 	(ce.access->uid==sctx.uid && ce.access->mode&S_IXUSR) ||

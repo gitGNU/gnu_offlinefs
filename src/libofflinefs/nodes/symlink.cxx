@@ -16,9 +16,11 @@
 
 #include "symlink.hxx"
 #include "directory.hxx"
+#include "types.hxx"
 
 using std::auto_ptr;
 using std::string;
+namespace off = offlinefs;
 
 Symlink::Symlink(FsTxn& txns,uint64_t id):Node(txns,id) {
 }
@@ -26,7 +28,7 @@ Symlink::Symlink(FsTxn& txns,uint64_t id):Node(txns,id) {
 
 auto_ptr<Symlink> Symlink::create(FsTxn& txns){
    auto_ptr<Symlink> n(new Symlink(txns,Node::create(txns)->getid()));
-   n->setattr<mode_t>("offlinefs.mode",S_IFLNK);
+   n->setattr<off::mode_t>("offlinefs.mode",S_IFLNK);
    n->setattrv("offlinefs.symlink",Buffer());
    return n;
 }

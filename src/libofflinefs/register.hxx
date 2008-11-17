@@ -23,12 +23,13 @@ template<typename AttrT> AttrT Database<IdT>::Register::getattr(std::string name
    Buffer b=getattrv(name);
    if(b.size!=sizeof(AttrT))
       throw std::runtime_error("Database::Register::getattr: Sizes do not match.");
-   return __be_to_cpu<AttrT>(*(AttrT*)b.data);
+
+   return db_to_host<AttrT>(*(AttrT*)b.data);
 }
 
 template<typename IdT>
 template<typename AttrT> void Database<IdT>::Register::setattr(std::string name,AttrT v){
-   v = __cpu_to_be<AttrT>(v);
+   v = host_to_db<AttrT>(v);
    Buffer b((char*)&v,sizeof(AttrT));
    setattrv(name,b);
 }
@@ -45,7 +46,7 @@ Database<IdT>::Register::~Register(){}
 
 // Each berkeley DB key stores the concatenation of the ID and the attribute name
 template<typename IdT>
-Buffer Database<IdT>::Register::mkey(std::string name){
+Buffer Database<IdT>::Register::getkey(std::string name){
    Buffer b;
    b.size=sizeof(Key)+name.size();
    b.data=new char[b.size];
@@ -57,7 +58,7 @@ Buffer Database<IdT>::Register::mkey(std::string name){
 
 template<typename IdT>
 Buffer Database<IdT>::Register::getattrv(std::string name){
-   Buffer bk=mkey(name);
+   Buffer bk=getkey(name);
    Dbt key(bk.data,bk.size);
    Dbt v;
    v.set_flags(DB_DBT_MALLOC);
@@ -75,7 +76,7 @@ Buffer Database<IdT>::Register::getattrv(std::string name){
 
 template<typename IdT>
 void Database<IdT>::Register::setattrv(std::string name,const Buffer& bv){
-   Buffer bk=mkey(name);
+   Buffer bk=getkey(name);
    Dbt key(bk.data,bk.size);
    Dbt v(bv.data,bv.size);
 
@@ -87,7 +88,7 @@ void Database<IdT>::Register::setattrv(std::string name,const Buffer& bv){
 
 template<typename IdT>
 void Database<IdT>::Register::delattr(std::string name){
-   Buffer bk=mkey(name);
+   Buffer bk=getkey(name);
    Dbt key(bk.data,bk.size);
 
    Dbt v;

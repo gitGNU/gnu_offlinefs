@@ -17,6 +17,7 @@
 #include "fs.hxx"
 #include <path.hxx>
 #include <media/medium.hxx>
+#include <types.hxx>
 
 #define MIN(a,b) (a<b?a:b)
 
@@ -24,6 +25,7 @@ using std::auto_ptr;
 using std::string;
 using std::exception;
 using std::list;
+namespace off = offlinefs;
 
 inline SContext FS::userctx(){
    return scache.get(fuse_get_context()->uid,fuse_get_context()->gid);
@@ -88,15 +90,15 @@ int FS::getattr(const char* path, struct stat* st){
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
       st->st_ino=(ino_t)n->getid();
-      st->st_dev=n->getattr<dev_t>("offlinefs.dev");
-      st->st_nlink=n->getattr<nlink_t>("offlinefs.nlink");
-      st->st_mode=n->getattr<mode_t>("offlinefs.mode");
-      st->st_uid=n->getattr<uid_t>("offlinefs.uid");
-      st->st_gid=n->getattr<gid_t>("offlinefs.gid");
-      st->st_size=n->getattr<off_t>("offlinefs.size");
-      st->st_atime=n->getattr<time_t>("offlinefs.atime");
-      st->st_mtime=n->getattr<time_t>("offlinefs.mtime");
-      st->st_ctime=n->getattr<time_t>("offlinefs.ctime");
+      st->st_dev=n->getattr<off::dev_t>("offlinefs.dev");
+      st->st_nlink=n->getattr<off::nlink_t>("offlinefs.nlink");
+      st->st_mode=n->getattr<off::mode_t>("offlinefs.mode");
+      st->st_uid=n->getattr<off::uid_t>("offlinefs.uid");
+      st->st_gid=n->getattr<off::gid_t>("offlinefs.gid");
+      st->st_size=n->getattr<off::off_t>("offlinefs.size");
+      st->st_atime=n->getattr<off::time_t>("offlinefs.atime");
+      st->st_mtime=n->getattr<off::time_t>("offlinefs.mtime");
+      st->st_ctime=n->getattr<off::time_t>("offlinefs.ctime");
    }catch(exception& e){
       return errcode(e);
    }
@@ -111,7 +113,7 @@ int FS::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offse
 
       n->access(sctx,R_OK|X_OK);
 
-      n->setattr<time_t>("offlinefs.atime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.atime",time(NULL));
 
       list<string> l=n->getchildren();
       for(list<string>::iterator it=l.begin();it!=l.end();it++)
@@ -148,11 +150,11 @@ int FS::mknod(const char* path , mode_t mode, dev_t dev){
 
       auto_ptr<Node> n=p.create(txns,sctx);
 
-      n->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
-      n->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
-      n->setattr<mode_t>("offlinefs.mode",mode);
+      n->setattr<off::uid_t>("offlinefs.uid",fuse_get_context()->uid);
+      n->setattr<off::gid_t>("offlinefs.gid",fuse_get_context()->gid);
+      n->setattr<off::mode_t>("offlinefs.mode",mode);
       if(S_ISCHR(mode)||S_ISBLK(mode))
-	 n->setattr<dev_t>("offlinefs.dev",dev);
+	 n->setattr<off::dev_t>("offlinefs.dev",dev);
    }catch(exception& e){
       return errcode(e);
    }
@@ -168,9 +170,9 @@ int FS::mkdir(const char* path, mode_t mode){
       auto_ptr<Directory> n=p.create(txns,sctx);
       n->addchild("..",*p.parent);
 
-      n->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
-      n->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
-      n->setattr<mode_t>("offlinefs.mode",S_IFDIR|mode);
+      n->setattr<off::uid_t>("offlinefs.uid",fuse_get_context()->uid);
+      n->setattr<off::gid_t>("offlinefs.gid",fuse_get_context()->gid);
+      n->setattr<off::mode_t>("offlinefs.mode",S_IFDIR|mode);
    }catch(exception& e){
       return errcode(e);
    }
@@ -185,7 +187,7 @@ int FS::unlink(const char* path){
 
       p.parent->access(sctx,W_OK|X_OK);
 
-      p.parent->getchild(p.leaf)->setattr<time_t>("offlinefs.ctime",time(NULL));
+      p.parent->getchild(p.leaf)->setattr<off::time_t>("offlinefs.ctime",time(NULL));
 
       p.parent->delchild(p.leaf);
       pcache.invalidate(path);
@@ -224,8 +226,8 @@ int FS::symlink(const char* oldpath, const char* newpath){
 
       auto_ptr<Symlink> sl=p.create(txns,sctx);
 
-      sl->setattr<uid_t>("offlinefs.uid",fuse_get_context()->uid);
-      sl->setattr<gid_t>("offlinefs.gid",fuse_get_context()->gid);
+      sl->setattr<off::uid_t>("offlinefs.uid",fuse_get_context()->uid);
+      sl->setattr<off::gid_t>("offlinefs.gid",fuse_get_context()->gid);
       sl->setattrv("offlinefs.symlink",Buffer(oldpath));
    }catch(exception& e){
       return errcode(e);
@@ -252,7 +254,7 @@ int FS::link(const char* oldpath, const char* newpath){
 
       auto_ptr<Node> n=pcache.getnode(txns,sctx,oldpath);
 
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
       p.parent->addchild(p.leaf,*n);
    }catch(exception& e){
       return errcode(e);
@@ -267,16 +269,16 @@ int FS::chmod(const char* path, mode_t mode){
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
       if(fuse_get_context()->uid!=0){
-	 gid_t fgid=n->getattr<gid_t>("offlinefs.gid");
-	 uid_t fuid=n->getattr<uid_t>("offlinefs.uid");
+	 gid_t fgid=n->getattr<off::gid_t>("offlinefs.gid");
+	 uid_t fuid=n->getattr<off::uid_t>("offlinefs.uid");
 	 if(sctx.uid!=fuid)
 	    return -EPERM;
 	 if(!sctx.groups.count(fgid))
 	    mode&=~S_ISGID;
       }
 
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
-      n->setattr<mode_t>("offlinefs.mode",(mode&(~S_IFMT))|(n->getattr<mode_t>("offlinefs.mode")&S_IFMT));
+      n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
+      n->setattr<off::mode_t>("offlinefs.mode",(mode&(~S_IFMT))|(n->getattr<off::mode_t>("offlinefs.mode")&S_IFMT));
       pcache.invalidateAccess(path);
    }catch(exception& e){
       return errcode(e);
@@ -290,28 +292,28 @@ int FS::chown(const char* path, uid_t owner, gid_t group){
       SContext sctx=userctx();
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
-      if(owner!=(uid_t)-1 && owner!=n->getattr<uid_t>("offlinefs.uid")){
+      if(owner!=(uid_t)-1 && owner!=n->getattr<off::uid_t>("offlinefs.uid")){
 	 if(sctx.uid!=0)
 	    return -EACCES;
-	 n->setattr<uid_t>("offlinefs.uid",owner);
+	 n->setattr<off::uid_t>("offlinefs.uid",owner);
       }
 
-      if(group!=(gid_t)-1 && group!=n->getattr<gid_t>("offlinefs.gid")){
+      if(group!=(gid_t)-1 && group!=n->getattr<off::gid_t>("offlinefs.gid")){
 	 if(sctx.uid!=0){
 	    if(!sctx.groups.count(group))
 	       return -EACCES;
 	    else{
 	       //Clear setuid/setgid bit
-	       mode_t m=n->getattr<mode_t>("offlinefs.mode")&(~S_ISUID);
+	       mode_t m=n->getattr<off::mode_t>("offlinefs.mode")&(~S_ISUID);
 	       if(m&S_IXGRP)
 		  m&=~S_ISGID;
-	       n->setattr<mode_t>("offlinefs.mode",m);
+	       n->setattr<off::mode_t>("offlinefs.mode",m);
 	    }
 	 }
-	 n->setattr<gid_t>("offlinefs.gid",group);
+	 n->setattr<off::gid_t>("offlinefs.gid",group);
       }
 
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
       pcache.invalidateAccess(path);
    }catch(exception& e){
       return errcode(e);
@@ -327,10 +329,15 @@ int FS::truncate(const char* path, off_t length){
 
       n->access(sctx,W_OK);
 
-      n->setattr<time_t>("offlinefs.mtime",time(NULL));
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.mtime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
 
-      return getsource(*n,path,O_WRONLY)->ftruncate(length);
+      auto_ptr<Source> source = getsource(*n,path,O_WRONLY);
+
+      txns.commit(); // Source methods initiate their own transaction
+
+      source->ftruncate(length);
+
    }catch(exception& e){
       return errcode(e);
    }
@@ -380,7 +387,7 @@ int FS::read(const char* path, char* buf, size_t nbyte, off_t offset, struct fus
    if(nbyte>0){
       FsTxn txns(dbs);
       File f(txns,openFiles[fi->fh]->getfileid());
-      f.setattr<time_t>("offlinefs.atime",time(NULL));
+      f.setattr<off::time_t>("offlinefs.atime",time(NULL));
    }
 
    return openFiles[fi->fh]->read(buf,nbyte,offset);
@@ -393,7 +400,7 @@ int FS::write(const char* path, const char* buf, size_t nbyte, off_t offset, str
    if(nbyte>0){
       FsTxn txns(dbs);
       File f(txns,openFiles[fi->fh]->getfileid());
-      f.setattr<time_t>("offlinefs.mtime",time(NULL));
+      f.setattr<off::time_t>("offlinefs.mtime",time(NULL));
    }
 
    return openFiles[fi->fh]->write(buf,nbyte,offset);
@@ -457,10 +464,10 @@ int FS::setxattr(const char* path, const char* name, const char* value, size_t s
       SContext sctx=userctx();
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
-      if(sctx.uid!=0 && sctx.uid!=getuid() && (string(name).find("offlinefs.")==0 || sctx.uid!=n->getattr<uid_t>("offlinefs.uid")) )
+      if(sctx.uid!=0 && sctx.uid!=getuid() && (string(name).find("offlinefs.")==0 || sctx.uid!=n->getattr<off::uid_t>("offlinefs.uid")) )
 	 return -EACCES;
 
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
 
       if(flags){
 	 if(flags==XATTR_CREATE){
@@ -535,10 +542,10 @@ int FS::removexattr(const char* path, const char* name){
       SContext sctx=userctx();
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
-      if(sctx.uid!=0 && sctx.uid!=getuid() && (string(name).find("offlinefs.")==0 || sctx.uid!=n->getattr<uid_t>("offlinefs.uid")) )
+      if(sctx.uid!=0 && sctx.uid!=getuid() && (string(name).find("offlinefs.")==0 || sctx.uid!=n->getattr<off::uid_t>("offlinefs.uid")) )
 	 return -EACCES;
 
-      n->setattr<time_t>("offlinefs.ctime",time(NULL));
+      n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
 
       n->delattr(name);
    }catch(Node::EAttrNotFound& e){
@@ -556,16 +563,16 @@ int FS::utimens(const char* path, const struct timespec tv[2]){
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
       if(tv){
-	 if(sctx.uid!=0 && sctx.uid!=getuid() && sctx.uid!=n->getattr<uid_t>("offlinefs.uid"))
+	 if(sctx.uid!=0 && sctx.uid!=getuid() && sctx.uid!=n->getattr<off::uid_t>("offlinefs.uid"))
 	    return -EACCES;
 
-	 n->setattr<time_t>("offlinefs.atime",tv[0].tv_sec);
-	 n->setattr<time_t>("offlinefs.mtime",tv[1].tv_sec);
+	 n->setattr<off::time_t>("offlinefs.atime",tv[0].tv_sec);
+	 n->setattr<off::time_t>("offlinefs.mtime",tv[1].tv_sec);
       }else{
 	 n->access(sctx,W_OK);
 
-	 n->setattr<time_t>("offlinefs.atime",time(NULL));
-	 n->setattr<time_t>("offlinefs.mtime",time(NULL));	 
+	 n->setattr<off::time_t>("offlinefs.atime",time(NULL));
+	 n->setattr<off::time_t>("offlinefs.mtime",time(NULL));	 
       }
    }catch(exception& e){
       return errcode(e);

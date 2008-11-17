@@ -14,24 +14,12 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "file.hxx"
-#include "directory.hxx"
-#include <sources/source.hxx>
-#include "types.hxx"
-
-using std::auto_ptr;
-using std::string;
-namespace off = offlinefs;
-
-auto_ptr<File> File::create(FsTxn& txns){
-   auto_ptr<File> n(new File(txns,Node::create(txns)->getid()));
-   n->setattr<off::mode_t>("offlinefs.mode",S_IFREG);
-   return n;
-}
-
-void File::remove(){
-   try{
-      Source::remove(*this);
-   }catch(...){}
-   Node::remove();
+namespace offlinefs{
+   typedef uint64_t time_t;
+   typedef uint32_t nlink_t;
+   typedef uint32_t mode_t;
+   typedef uint32_t gid_t;
+   typedef uint32_t uid_t;
+   typedef uint64_t off_t;
+   typedef uint64_t dev_t;
 }

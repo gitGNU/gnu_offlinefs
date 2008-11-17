@@ -32,6 +32,7 @@
 #include <pathcache.hxx>
 #include <path.hxx>
 #include "format.hxx"
+#include <types.hxx>
 
 using std::string;
 using std::auto_ptr;
@@ -42,6 +43,7 @@ using std::exception;
 using std::tr1::unordered_map;
 
 namespace po=boost::program_options;
+namespace off = offlinefs;
 
 void sigint_handler(int){
    fclose(stdin);
@@ -334,54 +336,54 @@ int main(int argc, char** argv){
 	 // Set the specified attributes...
 	 if(!m.link.empty()){
 	    if(!nodetype)
-	       nodetype=n->getattr<mode_t>("offlinefs.mode")&S_IFMT;
+	       nodetype=n->getattr<off::mode_t>("offlinefs.mode")&S_IFMT;
 	    if(nodetype==S_IFLNK)
 	       n->setattrv("offlinefs.symlink",Buffer(m.link));
 	 }
 
 	 if(!m.numgroup.empty()){
-	    n->setattr<gid_t>("offlinefs.gid",parse<gid_t>(m.numgroup));
+	    n->setattr<off::gid_t>("offlinefs.gid",parse<gid_t>(m.numgroup));
 	 }else if(!m.group.empty()){
 	    try{
-	       n->setattr<gid_t>("offlinefs.gid",parse<gid_t>(m.group));
+	       n->setattr<off::gid_t>("offlinefs.gid",parse<gid_t>(m.group));
 	    }catch(...){
 	       struct group* gr=getgrnam(m.group.c_str());
 	       if(!gr)
 		  throw runtime_error("Group \""+m.group+"\" doesn't exist.");
-	       n->setattr<gid_t>("offlinefs.gid",gr->gr_gid);
+	       n->setattr<off::gid_t>("offlinefs.gid",gr->gr_gid);
 	    }
 	 }else if(creating){
-	    n->setattr<gid_t>("offlinefs.gid",getgid());
+	    n->setattr<off::gid_t>("offlinefs.gid",getgid());
 	 }
 
 	 if(!m.numuser.empty()){
-	    n->setattr<uid_t>("offlinefs.uid",parse<uid_t>(m.numuser));
+	    n->setattr<off::uid_t>("offlinefs.uid",parse<uid_t>(m.numuser));
 	 }else if(!m.user.empty()){
 	    try{
-	       n->setattr<uid_t>("offlinefs.uid",parse<uid_t>(m.user));
+	       n->setattr<off::uid_t>("offlinefs.uid",parse<uid_t>(m.user));
 	    }catch(...){
 	       struct passwd* pw=getpwnam(m.user.c_str());
 	       if(!pw)
 		  throw runtime_error("User \""+m.user+"\" doesn't exist.");
 	    }
 	 }else if(creating){
-	    n->setattr<uid_t>("offlinefs.uid",getuid());
+	    n->setattr<off::uid_t>("offlinefs.uid",getuid());
 	 }
 
 	 if(!m.atime.empty())
-	    n->setattr<time_t>("offlinefs.atime",parse<time_t>(m.atime));
+	    n->setattr<off::time_t>("offlinefs.atime",parse<time_t>(m.atime));
 	 else if(creating)
-	    n->setattr<time_t>("offlinefs.atime",time(NULL));
+	    n->setattr<off::time_t>("offlinefs.atime",time(NULL));
 
 	 if(!m.mtime.empty())
-	    n->setattr<time_t>("offlinefs.mtime",parse<time_t>(m.mtime));
+	    n->setattr<off::time_t>("offlinefs.mtime",parse<time_t>(m.mtime));
 	 else if(creating)
-	    n->setattr<time_t>("offlinefs.mtime",time(NULL));
+	    n->setattr<off::time_t>("offlinefs.mtime",time(NULL));
 	 
 	 if(!m.ctime.empty())
-	    n->setattr<time_t>("offlinefs.ctime",parse<time_t>(m.ctime));
+	    n->setattr<off::time_t>("offlinefs.ctime",parse<time_t>(m.ctime));
 	 else if(creating)
-	    n->setattr<time_t>("offlinefs.ctime",time(NULL));
+	    n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
 	 
 
 	 if(!m.perms.empty()){
@@ -391,8 +393,8 @@ int main(int argc, char** argv){
 	    if(is.fail())
 	       throw runtime_error("Error parsing permissions");
 	    if(!nodetype)
-	       nodetype=n->getattr<mode_t>("offlinefs.mode")&S_IFMT;
-	    n->setattr<mode_t>("offlinefs.mode",nodetype|((~S_IFMT)&perms));
+	       nodetype=n->getattr<off::mode_t>("offlinefs.mode")&S_IFMT;
+	    n->setattr<off::mode_t>("offlinefs.mode",nodetype|((~S_IFMT)&perms));
 	 }else if(creating){
 	    mode_t m=umask(0);
 	    umask(m);
@@ -402,17 +404,17 @@ int main(int argc, char** argv){
 	       m=0;
 	    else
 	       m=(~m)&0666;
-	    n->setattr<mode_t>("offlinefs.mode",nodetype|m);
+	    n->setattr<off::mode_t>("offlinefs.mode",nodetype|m);
 	 }else if(!creating && nodetype){
-	    mode_t perms=n->getattr<mode_t>("offlinefs.mode")&(~S_IFMT);
-	    n->setattr<mode_t>("offlinefs.mode",nodetype|perms);
+	    mode_t perms=n->getattr<off::mode_t>("offlinefs.mode")&(~S_IFMT);
+	    n->setattr<off::mode_t>("offlinefs.mode",nodetype|perms);
 	 }
 
 	 if(!m.size.empty()){
 	    if(!nodetype)
-	       nodetype=n->getattr<mode_t>("offlinefs.mode")&S_IFMT;	       
+	       nodetype=n->getattr<off::mode_t>("offlinefs.mode")&S_IFMT;	       
 	    if(nodetype==S_IFREG)
-	       n->setattr<off_t>("offlinefs.size",parse<off_t>(m.size));
+	       n->setattr<off::off_t>("offlinefs.size",parse<off_t>(m.size));
 	 }
 
 	 // Set the specified extended attributes...

@@ -16,8 +16,10 @@
 
 #include "fsdb.hxx"
 #include "nodes.hxx"
+#include "types.hxx"
 
 using std::auto_ptr;
+namespace off = offlinefs;
 
 FsDb::FsDb(std::string dbroot):Environment(dbroot),nodes(*this,"nodes"), directories(*this,"directories"),media(*this,"media") {}
 
@@ -47,9 +49,9 @@ void FsDb::rebuild(){
    // Initialize the root directory (it will get 0 as id)
    FsTxn txns(*this);
    auto_ptr<Directory> root=Directory::create(txns);
-   root->setattr<mode_t>("offlinefs.mode",S_IFDIR|0755);
-   root->setattr<uid_t>("offlinefs.uid",getuid());
-   root->setattr<gid_t>("offlinefs.gid",getgid());
+   root->setattr<off::mode_t>("offlinefs.mode",S_IFDIR|0755);
+   root->setattr<off::uid_t>("offlinefs.uid",getuid());
+   root->setattr<off::gid_t>("offlinefs.gid",getgid());
 
    root->addchild("..",*root);
 }

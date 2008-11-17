@@ -17,14 +17,15 @@
 #ifndef FS_HXX
 #define FS_HXX
 
-#include <pthread.h>
-
 #include <common.hxx>
+
 #include <fsdb.hxx>
 #include <nodes.hxx>
 #include <sources/source.hxx>
 #include <pathcache.hxx>
 #include "scontextcache.hxx"
+
+#include <pthread.h>
 
 #define MAX_OPEN_FILES 512
 
