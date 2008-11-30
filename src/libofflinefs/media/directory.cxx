@@ -39,8 +39,8 @@ Medium::Stats Medium_directory::getstats(){
    if(statvfs(directory.c_str(),&st))
       throw std::runtime_error("Medium_directory::getstats: error calling statvfs.");
    Stats st_;
-   st_.blocks=st.f_blocks*st.f_frsize/4096;
-   st_.freeblocks=st.f_bfree*st.f_frsize/4096;
+   st_.total=st.f_blocks*st.f_frsize;
+   st_.free=st.f_bfree*st.f_frsize;
    return st_;
 }
 

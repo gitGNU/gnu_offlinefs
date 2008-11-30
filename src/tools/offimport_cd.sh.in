@@ -21,8 +21,31 @@ usage(){
     exit 1
 }
 
+get_size(){
+    device=`grep " ${cdroot%%/} " /etc/mtab |cut -d' ' -f1`
+    total_size=0
+
+    if [ -n "$device" -a -n "`which cdrecord 2>/dev/null`" ]; then
+	sec_size=`cdrecord -v -minfo dev=$device:@ 2>/dev/null |sed -n 's/Current Secsize\W\+//p'`
+	phys_sec=`cdrecord -v -minfo dev=$device:@ 2>/dev/null |sed -n 's/phys size\W\+//p'`
+	free_sec=`cdrecord -v -minfo dev=$device:@ 2>/dev/null |sed -n 's/Remaining writable size\W\+//p'`
+
+	total_size=$((sec_size*phys_sec))
+	free_size=$((sec_size*free_sec))
+    fi
+
+    if [ "$total_size" -eq 0 ]; then
+	block_size=`stat -f -c "%S" "$cdroot"`
+	fs_total_blocks=`stat -f -c "%b" "$cdroot"`
+	fs_free_blocks=`stat -f -c "%f" "$cdroot"`
+
+	total_size=$((fs_total_blocks*block_size))
+	free_size=$((fs_free_blocks*block_size))
+    fi
+}
+
 dbroot="$HOME/.offlinefs" 
-insert="/usr/local/etc/offlinefs/insert"
+insert="@sysconfdir@/offlinefs/insert"
 cdroot=""
 label=""
 prefix="/"
@@ -60,6 +83,11 @@ offmedia --dbroot "$dbroot" --label "$label" --add insert || exit 1
 offmedia --dbroot "$dbroot" --label "$label" --set directory "$cdroot" || exit 1
 offmedia --dbroot "$dbroot" --label "$label" --set checkcmd "test $fingerprint = \`stat -f -c %a%b%c%d%f%i%l%s%S%t $cdroot\`" || exit 1
 offmedia --dbroot "$dbroot" --label "$label" --set insertcmd "$insert \"$label\" \"$cdroot\"" || exit 1
+
+get_size
+
+offmedia --dbroot "$dbroot" --label "$label" --set "total_size" $total_size || exit 1
+offmedia --dbroot "$dbroot" --label "$label" --set "free_size" $free_size || exit 1
 
 echo "Adding files to the database..."
 find $cdroot -printf '%U %G %m %y %A@ %T@ %s %P //// %l\n' |awk 'NR!=1 {print $0}' |offimport -c -M "$label" -b "$dbroot" -p "$prefix" -f  '%U %G %m %y %A@ %T@ %s %P //// %l'

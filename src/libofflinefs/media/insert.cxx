@@ -27,6 +27,8 @@ auto_ptr<Medium_insert> Medium_insert::create(FsTxn& txns){
    m->setattrv("type",Buffer("insert"));
    m->setattrv("checkcmd",Buffer(""));
    m->setattrv("insertcmd",Buffer(""));
+   m->setattrv("total_size",Buffer("0"));
+   m->setattrv("free_size",Buffer("0"));
 
    return auto_ptr<Medium_insert>(new Medium_insert(txns,m->getid()));
 }
@@ -37,8 +39,13 @@ std::auto_ptr<Chunk> Medium_insert::getchunk(std::string phid, int mode){
 }
 
 Medium::Stats Medium_insert::getstats(){
-   insert();
-   return Medium_directory::getstats();
+   Stats st;
+   try{
+      std::istringstream(getattrv("total_size")) >> st.total;
+      std::istringstream(getattrv("free_size")) >> st.free;
+   }catch(...){}
+
+   return st;
 }
 
 void Medium_insert::addfile(string phid){

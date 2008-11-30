@@ -416,16 +416,16 @@ int FS::statfs(const char* path, struct statvfs* buf){
 	  it!=ms.end(); it++){
 	 Medium::Stats st_=(Medium::getmedium(txns, *it))->getstats();
 
-	 st.blocks+=st_.blocks;
-	 st.freeblocks+=st_.freeblocks;
+	 st.total+=st_.total;
+	 st.free+=st_.free;
       }
 
       memset(buf,0,sizeof(struct statvfs));
       buf->f_bsize=4096;
       buf->f_frsize=4096;
-      buf->f_blocks=st.blocks;
-      buf->f_bfree=st.freeblocks;
-      buf->f_bavail=st.freeblocks;
+      buf->f_blocks=st.total/4096;
+      buf->f_bfree=st.free/4096;
+      buf->f_bavail=st.free/4096;
       buf->f_namemax=0;
 
       return 0;
