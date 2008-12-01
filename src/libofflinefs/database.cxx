@@ -30,6 +30,7 @@ Environment::Environment(std::string path):opcount(0){
 #else
    dbenv->set_flags(DB_LOG_AUTOREMOVE,1);
 #endif
+   dbenv->set_flags(DB_TXN_NOSYNC,1);
    dbenv->set_lk_detect(DB_LOCK_RANDOM);
    cleanlogs();
 }

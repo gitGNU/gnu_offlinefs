@@ -384,24 +384,12 @@ int FS::read(const char* path, char* buf, size_t nbyte, off_t offset, struct fus
    if(fi->fh>=MAX_OPEN_FILES || !openFiles[fi->fh])
       return -EBADF;
 
-   if(nbyte>0){
-      FsTxn txns(dbs);
-      File f(txns,openFiles[fi->fh]->getfileid());
-      f.setattr<off::time_t>("offlinefs.atime",time(NULL));
-   }
-
    return openFiles[fi->fh]->read(buf,nbyte,offset);
 }
 
 int FS::write(const char* path, const char* buf, size_t nbyte, off_t offset, struct fuse_file_info* fi){
    if(fi->fh>=MAX_OPEN_FILES || !openFiles[fi->fh])
       return -EBADF;
-
-   if(nbyte>0){
-      FsTxn txns(dbs);
-      File f(txns,openFiles[fi->fh]->getfileid());
-      f.setattr<off::time_t>("offlinefs.mtime",time(NULL));
-   }
 
    return openFiles[fi->fh]->write(buf,nbyte,offset);
 }

@@ -22,9 +22,7 @@ using std::string;
 using std::auto_ptr;
 namespace off = offlinefs;
 
-Source::Source(File& f,int mode):dbs(f.txns.dbs),fileid(f.getid()),size(0),mode(mode) {
-   size=f.getattr<off::off_t>("offlinefs.size");
-}
+Source::Source(File& f,int mode):dbs(f.txns.dbs),fileid(f.getid()),mode(mode) {}
 
 auto_ptr<Source> Source::getsource(File& f,int mode){
    string source = f.getattrv("offlinefs.source");

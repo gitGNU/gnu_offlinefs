@@ -23,6 +23,9 @@
 // Implementation that proxies the operations to a single Chunk
 class Source_single:public Source{
       std::auto_ptr<Chunk> chunk;
+      offlinefs::off_t size;
+      offlinefs::time_t atime;
+      offlinefs::time_t mtime;
    public:
       Source_single(File& f,int mode);
 

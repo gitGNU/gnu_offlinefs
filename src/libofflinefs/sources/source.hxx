@@ -26,7 +26,6 @@ class Source{
    protected:
       FsDb& dbs;
       uint64_t fileid;
-      offlinefs::off_t size;
       int mode;
    public:
       Source(File& f,int mode);
