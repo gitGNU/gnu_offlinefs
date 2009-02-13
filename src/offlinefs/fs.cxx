@@ -68,6 +68,14 @@ int FS::errcode(exception& e){
    }
 }
 
+inline void FS::check_sticky_bit(SContext& sctx, Directory* parent, Node* n){
+   if((parent->getattr<off::mode_t>("offlinefs.mode") & S_ISVTX) &&
+      (sctx.uid != 0)  &&
+      (sctx.uid != parent->getattr<off::uid_t>("offlinefs.uid")) &&
+      (sctx.uid != n->getattr<off::uid_t>("offlinefs.uid")))
+      throw Node::EAccess();
+}
+
 // Filesystem operations
 
 FS::FS(string dbroot,string defmedium):dbs(dbroot),defmedium(defmedium) {
@@ -246,11 +254,86 @@ int FS::symlink(const char* oldpath, const char* newpath){
 }
  
 int FS::rename(const char* oldpath, const char* newpath){
-   int err;
-   if((err=link(oldpath,newpath)))
-      return err;
-   if((err=unlink(oldpath)))
-      return err;
+   try{
+      FsTxn txns(dbs);
+      SContext sctx=userctx();
+      Path<Node> srcpath(txns,sctx,pcache,oldpath);
+      Path<Node> dstpath(txns,sctx,pcache,newpath);
+      auto_ptr<Node> src,dst;
+
+      src = srcpath.parent->getchild(srcpath.leaf);
+      try{
+	 dst = dstpath.parent->getchild(dstpath.leaf);
+      }catch(Node::ENotFound& e){}
+
+      // Check if both paths refer to the same node
+      if(dst.get() && string(oldpath) == string(newpath))
+	 return 0;
+
+      srcpath.parent->access(sctx,X_OK|W_OK);
+      dstpath.parent->access(sctx,X_OK|W_OK);
+
+      check_sticky_bit(sctx, srcpath.parent.get(), src.get());
+
+      if(dst.get()){
+	 check_sticky_bit(sctx, dstpath.parent.get(), dst.get());
+
+	 // Ensure that both nodes are directories, if any
+	 if(S_ISDIR(src->getattr<off::mode_t>("offlinefs.mode"))){
+	    if(!S_ISDIR(dst->getattr<off::mode_t>("offlinefs.mode")))
+	       return -ENOTDIR;
+
+	    // Check if dst is a subdirectory of src
+	    for(auto_ptr<Directory> n=Node::cast<Directory>(Node::getnode(dstpath.parent.get()));
+		n->getid(); n = Node::cast<Directory>(n->getchild(".."))){
+	       if(n->getid() == src->getid())
+		  return -EINVAL;
+	    }
+
+	    // Ensure that the destination node is empty
+	    auto_ptr<Directory> d = Node::cast<Directory>(Node::getnode(dst.get()));
+
+	    if(d->countchildren() > 2)
+	       return -ENOTEMPTY;
+
+	    d->delchild(".");
+	    d->delchild("..");
+
+	 }else{
+	    if(S_ISDIR(dst->getattr<off::mode_t>("offlinefs.mode")))
+	       return -EISDIR;
+	 }
+
+	 // Remove the destination node
+	 pcache.invalidate(txns, newpath);
+	 dst->setattr<off::time_t>("offlinefs.ctime",time(NULL));
+	 dstpath.parent->delchild(dstpath.leaf);
+      }
+
+      if(S_ISDIR(src->getattr<off::mode_t>("offlinefs.mode"))){
+	 Directory* d = (Directory*)src.get();
+
+	 // Update the parent of src
+	 d->delchild("..");
+	 d->addchild("..",*dstpath.parent);
+      }
+
+      // Relink src at the destination path
+      pcache.invalidate(txns, oldpath);
+      src->setattr<off::time_t>("offlinefs.ctime",time(NULL));
+
+      dstpath.parent->addchild(dstpath.leaf, *src);
+      srcpath.parent->delchild(srcpath.leaf);
+
+      // Update the ctime/mtime attributes of the modified directories
+      srcpath.parent->setattr<off::time_t>("offlinefs.ctime",time(NULL));
+      srcpath.parent->setattr<off::time_t>("offlinefs.mtime",time(NULL));
+      dstpath.parent->setattr<off::time_t>("offlinefs.ctime",time(NULL));
+      dstpath.parent->setattr<off::time_t>("offlinefs.mtime",time(NULL));
+
+   }catch(exception& e){
+      return errcode(e);
+   }
    return 0;
 }
 

@@ -49,6 +49,10 @@ class FS{
       // Translate an exception into an error code.
       int errcode(std::exception& e);
 
+      // Throw EAccess if parent has the sticky bit set and the caller
+      // shouldn't be allowed to unlink n.
+      inline void check_sticky_bit(SContext& sctx, Directory* parent, Node* n);
+
    public:
       FS(std::string dbroot, std::string defmedium);
       ~FS();

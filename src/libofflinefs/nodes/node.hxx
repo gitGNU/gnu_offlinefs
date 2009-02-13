@@ -50,6 +50,11 @@ class Node:public Database<uint64_t>::Register{
       // It throws ENotFound if the node doesn't exist
       static std::auto_ptr<Node> getnode(FsTxn& txns, uint64_t id);
 
+      // Clone a node.
+      static std::auto_ptr<Node> getnode(const Node* n){
+	 return getnode(n->txns,n->getid());
+      }
+
       template<typename T>
       static std::auto_ptr<T> cast(std::auto_ptr<Node> n){
 	 if(typeid(*n)!=typeid(T))
