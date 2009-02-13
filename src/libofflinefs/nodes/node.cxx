@@ -75,18 +75,14 @@ std::auto_ptr<Node> Node::getnode(FsTxn& txns, uint64_t id){
 }
 
 void Node::access(const SContext& sctx, int mode){
-   if(sctx.uid==0)
-      return;
-   mode_t fmode=getattr<off::mode_t>("offlinefs.mode");
+   if(sctx.uid !=0){
+      mode_t fmode=getattr<off::mode_t>("offlinefs.mode");
 
-   int mode_ok=fmode&07;
+      fmode = (sctx.uid == getattr<off::uid_t>("offlinefs.uid")? (fmode>>6) & 07 :
+	       sctx.groups.count(getattr<off::gid_t>("offlinefs.gid"))? (fmode>>3) & 07 :
+	       fmode & 07);
 
-   if(sctx.groups.count(getattr<off::gid_t>("offlinefs.gid")))
-      mode_ok|=(fmode>>3)&07;
-
-   if(sctx.uid==getattr<off::uid_t>("offlinefs.uid"))
-      mode_ok|=(fmode>>6)&07;
-
-   if(mode&~mode_ok)
-      throw EAccess();
+      if(mode & ~fmode)
+	 throw EAccess();
+   }
 }
