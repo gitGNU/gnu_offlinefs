@@ -596,3 +596,17 @@ int FS::access(const char* path, int mode){
    }
    return 0;
 }
+
+int FS::opendir(const char* path, struct fuse_file_info* fi){
+   try{
+      FsTxn txns(dbs);
+      SContext sctx=userctx();
+      auto_ptr<Directory> n=Node::cast<Directory>(pcache.getnode(txns,sctx,path));
+
+      n->access(sctx,R_OK|X_OK);
+
+   }catch(exception& e){
+      return errcode(e);
+   }
+   return 0;
+}

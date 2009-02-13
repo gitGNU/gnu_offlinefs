@@ -226,6 +226,10 @@ static int access_(const char* path, int mode){
    return ((FS*)fuse_get_context()->private_data)->access(path,mode);
 }
 
+static int opendir_(const char* path, struct fuse_file_info* fi){
+   return ((FS*)fuse_get_context()->private_data)->opendir(path,fi);
+}
+
 int main(int argc, char** argv){
    fuse_operations ops;
 
@@ -258,6 +262,7 @@ int main(int argc, char** argv){
    ops.removexattr=removexattr_;
    ops.utimens=utimens_;
    ops.access=access_;
+   ops.opendir=opendir_;
 
    struct fuse_args args = FUSE_ARGS_INIT(argc,argv);
    

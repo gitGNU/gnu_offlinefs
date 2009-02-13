@@ -41,10 +41,12 @@ class FS{
       inline SContext userctx();
 
       std::string defmedium;
-      //Get the source associated to f
-      //If it isn't associated with any medium, associate it with the default one
+
+      // Get the source associated to f. If it isn't associated with
+      // any medium, associate it with the default one.
       std::auto_ptr<Source> getsource(File& f,std::string phid,int flags);
-      // Translate an exception into an error code
+
+      // Translate an exception into an error code.
       int errcode(std::exception& e);
 
    public:
@@ -77,6 +79,7 @@ class FS{
       int removexattr(const char* path, const char* name);
       int utimens(const char* path, const struct timespec tv[2]);
       int access(const char* path, int mode);
+      int opendir(const char* path, struct fuse_file_info* fi);
 };
 
 #endif
