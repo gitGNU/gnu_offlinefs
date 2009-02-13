@@ -19,13 +19,15 @@
 #include <media/medium.hxx>
 #include <types.hxx>
 
-#define MIN(a,b) (a<b?a:b)
-
 using std::auto_ptr;
 using std::string;
 using std::exception;
 using std::list;
 namespace off = offlinefs;
+
+// Helper functions
+
+#define MIN(a,b) (a<b?a:b)
 
 inline SContext FS::userctx(){
    return scache.get(fuse_get_context()->uid,fuse_get_context()->gid);
@@ -65,6 +67,8 @@ int FS::errcode(exception& e){
       return -EIO;
    }
 }
+
+// Filesystem operations
 
 FS::FS(string dbroot,string defmedium):dbs(dbroot),defmedium(defmedium) {
    memset(openFiles,0,sizeof(openFiles));
@@ -115,13 +119,16 @@ int FS::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offse
 
       n->setattr<off::time_t>("offlinefs.atime",time(NULL));
 
-      list<string> l=n->getchildren();
+      list<string> l;
+      n->getchildren(l);
+
       for(list<string>::iterator it=l.begin();it!=l.end();it++)
 	 filler(buf,it->c_str(),NULL,0);
+
    }catch(exception& e){
       return errcode(e);
    }
-  return 0;
+   return 0;
 }
 
 int FS::readlink(const char* path, char* buf, size_t bufsiz){
@@ -207,11 +214,14 @@ int FS::rmdir(const char* path){
       p.parent->access(sctx,X_OK|W_OK);
 
       auto_ptr<Directory> n=Node::cast<Directory>(p.parent->getchild(p.leaf));
-      if(n->getchildren().size()>2)
+
+      // It should only contain "." and ".."
+      if(n->countchildren() > 2)
 	 return -ENOTEMPTY;
 
       p.parent->delchild(p.leaf);
-      pcache.invalidate(path);
+      pcache.invalidate(txns,path);
+
    }catch(exception& e){
       return errcode(e);
    }
@@ -279,7 +289,7 @@ int FS::chmod(const char* path, mode_t mode){
 
       n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
       n->setattr<off::mode_t>("offlinefs.mode",(mode&(~S_IFMT))|(n->getattr<off::mode_t>("offlinefs.mode")&S_IFMT));
-      pcache.invalidateAccess(path);
+      pcache.invalidate(txns,path);
    }catch(exception& e){
       return errcode(e);
    }
@@ -314,7 +324,7 @@ int FS::chown(const char* path, uid_t owner, gid_t group){
       }
 
       n->setattr<off::time_t>("offlinefs.ctime",time(NULL));
-      pcache.invalidateAccess(path);
+      pcache.invalidate(txns,path);
    }catch(exception& e){
       return errcode(e);
    }
@@ -399,7 +409,9 @@ int FS::statfs(const char* path, struct statvfs* buf){
       FsTxn txns(dbs);
       Medium::Stats st;
 
-      list<uint32_t> ms = dbs.media.listregisters(txns.media);
+      list<uint32_t> ms;
+      dbs.media.getregisters(txns.media,ms);
+
       for(list<uint32_t>::iterator it=ms.begin();
 	  it!=ms.end(); it++){
 	 Medium::Stats st_=(Medium::getmedium(txns, *it))->getstats();
@@ -472,8 +484,9 @@ int FS::setxattr(const char* path, const char* name, const char* value, size_t s
 
       n->setattrv(name,Buffer(value,size));
 
-      if(string(name)=="offlinefs.uid" || string(name)=="offlinefs.gid" || string(name)=="offlinefs.mode")
-	 pcache.invalidateAccess(path);
+      if(string(name)=="offlinefs.uid" || string(name)=="offlinefs.gid" ||
+	 string(name)=="offlinefs.mode")
+	 pcache.invalidate(txns,path);
 
    }catch(Node::EAttrNotFound& e){
       return -ENOATTR;
@@ -506,7 +519,8 @@ int FS::listxattr(const char* path , char* list, size_t size){
       SContext sctx=userctx();
       auto_ptr<Node> n=pcache.getnode(txns,sctx,path);
 
-      std::list<string> l=n->getattrs();
+      std::list<string> l;
+      n->getattrs(l);
 
       size_t count=0;
       for(std::list<string>::iterator it=l.begin();it!=l.end();it++){

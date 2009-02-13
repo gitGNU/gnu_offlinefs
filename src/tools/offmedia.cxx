@@ -208,7 +208,8 @@ int main(int argc, char** argv){
 				"Use --help for more information.");
 
 	 // Show the medium list
-	 list<uint32_t> media = dbs.media.listregisters(txns.media);
+	 list<uint32_t> media;
+	 dbs.media.getregisters(txns.media,media);
 	 
 	 for(list<uint32_t>::iterator mid = media.begin();
 	     mid != media.end(); mid++){
@@ -224,7 +225,8 @@ int main(int argc, char** argv){
 	    else
 	       std::cout << "[medium]\n";
 
-	    list<string> attributes = m->getattrs();
+	    list<string> attributes;
+	    m->getattrs(attributes);
 
 	    for(list<string>::iterator attribute = attributes.begin();
 		attribute != attributes.end(); attribute++){

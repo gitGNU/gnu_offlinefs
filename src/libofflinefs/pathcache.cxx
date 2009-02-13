@@ -14,125 +14,195 @@
 //     You should have received a copy of the GNU General Public License
 //     along with offlinefs.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/bind.hpp>
 #include <pathcache.hxx>
 #include <nodes.hxx>
-#include "types.hxx"
+#include <types.hxx>
+#include <token.hxx>
 
 using std::string;
 using std::auto_ptr;
 using std::list;
 using std::pair;
+using std::tr1::shared_ptr;
+using boost::bind;
 namespace off = offlinefs;
 
-std::auto_ptr<Node> PathCache_null::getnode(FsTxn& txns,const SContext& sctx, std::string path){
+std::auto_ptr<Node> PathCache_null::getnode(FsTxn& txns,const SContext& sctx, const std::string& path){
+   list<Token> toks;
    auto_ptr<Node> n = Node::getnode(txns,0);
-   string::size_type pos=0;
-   string::size_type newpos=0;
+
+   tokenize("/",toks,path);
 
    //Check search permission on every parent directory
-   while((newpos=path.find("/",pos))!=string::npos){
-      if(newpos!=pos){
-	 n->access(sctx,X_OK);
-	 n=Node::cast<Directory>(n)->getchild(path.substr(pos,newpos-pos));
-      }	 
-      pos=newpos+1;
+   for(list<Token>::iterator it=toks.begin();
+       it!=toks.end(); it++){
+      n->access(sctx,X_OK);
+      n=Node::cast<Directory>(n)->getchild(string(it->first,it->second));
    }
 
-   string leaf=path.substr(pos);
-   if(leaf.empty())
-      return n;
-   else{
-      n->access(sctx,X_OK);
-      return Node::cast<Directory>(n)->getchild(leaf);
-   }
+   return n;
 }
 
-PathCache_hash::PathCache_hash(): nelems(0){
+PathCache_hash::PathCache_hash(): maxentries(PATHCACHE_MAX_ENTRIES), nentries(0){
    if(pthread_mutex_init(&mutex,NULL))
       throw std::runtime_error("PathCache_hash::PathCache_hash: error initializing the mutex.");
+
+   paths.rehash(PATHCACHE_MAX_ENTRIES);
 }
 
 PathCache_hash::~PathCache_hash(){
    pthread_mutex_destroy(&mutex);
 }
 
-void PathCache_hash::insert(Cache::iterator cit,uint64_t nodeid){
-   if(nelems==PATHCACHE_MAX_ELEMS){
-      Cache::iterator last=cache.find(queue.back().c_str());
-      if(last->second.access)
-	 delete last->second.access;
-      cache.erase(last);
-      queue.pop_back();
-   }else
-      nelems++;
-   cit->second.nodeid=nodeid;
-   queue.push_front(cit->first);
-   cit->second.qit=queue.begin();
-}
+template<typename F, typename ItT>
+void PathCache_hash::withPath(F f, FsTxn& txns,const ItT& tok0,
+			      const ItT& tok1){
+   ItT tok = tok1;
+   CEntry* cen = lookup(txns,tok0,tok).get();
 
-void PathCache_hash::promote(Cache::iterator cit){
-   queue.erase(cit->second.qit);
-   queue.push_front(cit->first);
-   cit->second.qit=queue.begin();
-}
+   while(true){
+      f(cen);
 
-PathCache_hash::Cache::iterator PathCache_hash::promote(FsTxn& txns,string path,Cache::iterator parent,string leaf){
-   pair<Cache::iterator,bool> p=cache.insert(pair<string,CElem>(path,CElem()));
-   if(p.second)
-      try{
-	 insert(p.first,Node::cast<Directory>(Node::getnode(txns,parent->second.nodeid))->getchild(leaf)->getid());
-      }catch(...){
-	 cache.erase(p.first);
-	 throw;
+      if(tok == tok0)
+	 break;
+
+      tok--;
+
+      if(cen->data->parent->isValid()){
+	 cen = cen->data->parent.get();
+
+      }else{
+	 shared_ptr<CEntry> parent=lookup(txns,tok0,tok);
+	 cen->data->parent = parent;
+	 cen = parent.get();
       }
-   else
-      promote(p.first);
-   return p.first;
-}
-
-PathCache_hash::Cache::iterator PathCache_hash::promoteRoot(FsTxn& txns){
-   pair<Cache::iterator,bool> p=cache.insert(pair<string,CElem>("/",CElem()));
-   if(p.second)
-      insert(p.first,0);
-   else
-      promote(p.first);
-   return p.first;
-}
-
-void PathCache_hash::checkaccess(FsTxn& txns,const SContext& sctx,PathCache_hash::CElem& ce){
-   if(!ce.access){
-      Node n(txns,ce.nodeid);
-      ce.access=new Access(n.getattr<off::uid_t>("offlinefs.uid"),n.getattr<off::gid_t>("offlinefs.gid"),n.getattr<off::mode_t>("offlinefs.mode"));
    }
-   if(!(sctx.uid==0 || ce.access->mode&S_IXOTH ||
-	(ce.access->uid==sctx.uid && ce.access->mode&S_IXUSR) ||
-	(sctx.groups.count(ce.access->gid) && ce.access->mode&S_IXGRP)))
+}
+
+template<typename ItT>
+shared_ptr<PathCache_hash::CEntry> PathCache_hash::lookup(FsTxn& txns,const ItT& tok0, const ItT& tok1){
+   ItT tok = tok1;
+   list<pair<PathMap::iterator, bool> > cens;
+   shared_ptr<CEntry> cen;
+
+   try{
+      // Traverse up the branch until a cached ancestor is found
+      while(true){
+	 string path;
+	 join("/",path, tok0,tok);
+
+	 cens.push_back(paths.insert(PathMap::value_type(
+					path, shared_ptr<CEntry>(new CEntry))));
+
+	 if(!cens.back().second){
+	    break;
+	 }else if(tok == tok0){
+	    initEntry(txns, cens.back().first->second, shared_ptr<CEntry>(),
+		      tok0, tok0);
+	    break;
+	 }
+
+	 tok--;
+      }
+
+      cen = cens.back().first->second;
+      cens.pop_back();
+
+      // Insert into the cache every missing intermediate ancestor
+      while(tok != tok1){
+	 shared_ptr<CEntry> parent = cen;
+	 cen = cens.back().first->second;
+
+	 tok++;
+
+	 initEntry(txns, cen, parent, tok0, tok);
+
+	 cens.pop_back();
+
+      }
+   }catch(...){
+      // Clean up the inserted uninitialized cache entries
+      while(!cens.empty()){
+	 paths.erase(cens.back().first);
+	 cens.pop_back();
+      }
+
+      throw;
+   }
+
+   return cen;
+}
+
+template<typename ItT>
+void PathCache_hash::initEntry(FsTxn& txns, const shared_ptr<CEntry>& cen,
+			       const shared_ptr<CEntry>& parent,
+			       ItT tok0, ItT tok1){
+   auto_ptr<Node> n;
+   if(parent){
+      join("/",cen->data->path, tok0, tok1);
+
+      tok1--;
+
+      auto_ptr<Directory> d = Node::cast<Directory>(
+	 Node::getnode(txns,parent->data->nodeid));
+      n = d->getchild(string(tok1->first, tok1->second));
+
+   }else{
+      n = Node::getnode(txns,0);
+      cen->data->path = "";
+   }
+
+   cen->data->nodeid = n->getid();
+   cen->data->parent = parent;
+   cen->data->uid = n->getattr<off::uid_t>("offlinefs.uid");
+   cen->data->gid = n->getattr<off::gid_t>("offlinefs.gid");
+   cen->data->mode = n->getattr<off::mode_t>("offlinefs.mode");
+
+   queue.push_back(cen);
+   cen->data->queue_it = --queue.end();
+
+   nentries++;
+}
+
+void PathCache_hash::delEntry(shared_ptr<CEntry> cen){
+   queue.erase(cen->data->queue_it);
+   paths.erase(cen->data->path);
+
+   cen->invalidate();
+
+   nentries--;
+}
+
+void PathCache_hash::checkAccess(const SContext& sctx, PathCache_hash::CEntry* cen){
+   if(sctx.uid != 0 && (cen->data->uid == sctx.uid? ! (cen->data->mode & S_IXUSR) :
+			sctx.groups.count(cen->data->gid)? ! (cen->data->mode & S_IXGRP) :
+			! (cen->data->mode & S_IXOTH)))
       throw Node::EAccess();
 }
 
-std::auto_ptr<Node> PathCache_hash::getnode(FsTxn& txns, const SContext& sctx, std::string path){
-   Cache::iterator cit;
+std::auto_ptr<Node> PathCache_hash::getnode(FsTxn& txns, const SContext& sctx, const std::string& path){
+   list<Token> toks;
+   shared_ptr<CEntry> cen;
+
+   tokenize("/",toks, path);
 
    pthread_mutex_lock(&mutex);
    try{
-      cit = promoteRoot(txns);
-      string::size_type pos=0;
-      string::size_type newpos=0;
+      if(toks.begin() != toks.end())
+	 withPath(bind<void>(&PathCache_hash::checkAccess, this, sctx, _1),
+		  txns, toks.begin(), --toks.end());
 
-      // Check every parent directory for search permission
-      while((newpos=path.find("/",pos))!=string::npos){
-	 if(newpos!=pos){
-	    checkaccess(txns,sctx,cit->second);
-	    cit=promote(txns,path.substr(0,newpos),cit,path.substr(pos,newpos-pos));
-	 }	 
-	 pos=newpos+1;
-      }
-      
-      string leaf=path.substr(pos);
-      if(!leaf.empty()){
-	 checkaccess(txns,sctx,cit->second);
-	 cit=promote(txns,path,cit,leaf);
-      }
+      cen = lookup(txns, toks.begin(), toks.end());
+
+      // Promote the cache entry
+      queue.erase(cen->data->queue_it);
+      queue.push_back(cen);
+      cen->data->queue_it= --queue.end();
+
+      // If the cache is oversized, remove the least used entries
+      while(nentries > maxentries)
+	 delEntry(queue.front());
 
    }catch(...){
       pthread_mutex_unlock(&mutex);
@@ -140,27 +210,29 @@ std::auto_ptr<Node> PathCache_hash::getnode(FsTxn& txns, const SContext& sctx, s
    }
    pthread_mutex_unlock(&mutex);
 
-   return auto_ptr<Node>(Node::getnode(txns,cit->second.nodeid));
+   return Node::getnode(txns,cen->data->nodeid);
 }
 
-void PathCache_hash::invalidate(std::string path){
+void PathCache_hash::invalidate(FsTxn& txns, const std::string& path){
    pthread_mutex_lock(&mutex);
-   Cache::iterator it=cache.find(path.c_str());
-   if(it!=cache.end()){
-      queue.erase(it->second.qit);
-      if(it->second.access)
-	 delete it->second.access;
-      cache.erase(it);
-   }
-   pthread_mutex_unlock(&mutex);
-}
 
-void PathCache_hash::invalidateAccess(std::string path){
-   pthread_mutex_lock(&mutex);
-   Cache::iterator it=cache.find(path.c_str());
-   if(it!=cache.end() && it->second.access){
-	 delete it->second.access;
-	 it->second.access=NULL;
+   try{
+      // Tokenize and rejoin the path to ensure it is on the same form
+      // that would have been inserted into the path map
+      list<Token> toks;
+      string normalized_path;
+
+      tokenize("/",toks, path);
+      join("/",normalized_path, toks.begin(), toks.end());
+
+      PathMap::iterator cen = paths.find(normalized_path);
+      if(cen != paths.end())
+	 delEntry(cen->second);
+
+   }catch(...){
+      pthread_mutex_unlock(&mutex);
+      throw;
    }
+
    pthread_mutex_unlock(&mutex);
 }

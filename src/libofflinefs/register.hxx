@@ -102,27 +102,54 @@ void Database<IdT>::Register::delattr(std::string name){
 }
  
 template<typename IdT>
-std::list<std::string> Database<IdT>::Register::getattrs(){
-   std::list<std::string> l;
+template<typename ConT>
+void Database<IdT>::Register::getattrs(ConT& attrs){
    Dbt key(&id,sizeof(IdT));
    Dbt v;
 
    int err=txn.cur->get(&key,&v,DB_SET_RANGE|DB_RMW);
-   
-   while(!err && key.get_size()>=sizeof(Key) && ((Key*)key.get_data())->id==id){      
+
+   while(!err && key.get_size()>=sizeof(Key) && ((Key*)key.get_data())->id==id){
       if(key.get_size()>sizeof(Key))
-	 l.push_back(std::string(((Key*)key.get_data())->text,key.get_size()-sizeof(IdT)));
+	 attrs.push_back(std::string(((Key*)key.get_data())->text,key.get_size()-sizeof(IdT)));
+
       err=txn.cur->get(&key,&v,DB_NEXT|DB_RMW);
    }
+
+   if(err && err!=DB_NOTFOUND)
+      throw std::runtime_error("Database::Register::getattrs: Error accessing the database.");
+}
+
+template<typename IdT>
+int Database<IdT>::Register::countattrs(){
+   Dbt key(&id,sizeof(IdT));
+   Dbt v;
+   int count=0;
+
+   // We aren't interested on the actual attribute values
+   v.set_flags(DB_DBT_PARTIAL);
+   v.set_dlen(0);
+
+   int err=txn.cur->get(&key,&v,DB_SET_RANGE|DB_RMW);
+
+   while(!err && key.get_size()>=sizeof(Key) && ((Key*)key.get_data())->id==id){
+      if(key.get_size()>sizeof(Key))
+	 count++;
+
+      err=txn.cur->get(&key,&v,DB_NEXT|DB_RMW);
+   }
+
    if(err && err!=DB_NOTFOUND)
       throw std::runtime_error("Database::Register::getattrs: Error accessing the database.");
 
-   return l;
+   return count;
 }
 
 template<typename IdT>
 void Database<IdT>::Register::remove(){
-   std::list<std::string> l=getattrs();
+   std::list<std::string> l;
+   getattrs(l);
+
    for(std::list<std::string>::iterator it=l.begin();it!=l.end();it++)
       delattr(*it);
 

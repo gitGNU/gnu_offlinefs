@@ -22,82 +22,113 @@
 #include <fsdb.hxx>
 
 #include <tr1/unordered_map>
+#include <tr1/memory>
 #include <pthread.h>
 
-#define PATHCACHE_MAX_ELEMS 2000
+#define PATHCACHE_MAX_ENTRIES 4096
 
 class Node;
 
 class PathCache{
    public:
       virtual ~PathCache() {}
+
       // Instance a Node derived object, possibly using the cached data.
       // It can throw ENotFound, EBadCast<Directory> (if any of the specified parent nodes isn't a directory) 
       // and EAccess (if any of them doesn't have search permission for the caller).
-      virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, std::string path)=0;
+      virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, const std::string& path)=0;
+
       //Remove all the cached data related to the specified file.
-      virtual void invalidate(std::string path)=0;
-      //Remove all the cached permission data related to the specified file.
-      virtual void invalidateAccess(std::string path)=0;
+      virtual void invalidate(FsTxn& txns, const std::string& path)=0;
 };
 
 // Implementation of PathCache that doesn't actually cache anything.
 class PathCache_null:public PathCache{
    public:
       virtual ~PathCache_null() {}
-      virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, std::string path);
-      virtual void invalidate(std::string path) {}
-      virtual void invalidateAccess(std::string path) {}
+      virtual std::auto_ptr<Node> getnode(FsTxn& txns,const SContext& sctx, const std::string& path);
+      virtual void invalidate(FsTxn& txns, const std::string& path) {}
 };
 
 // Thread-safe implementation of PathCache by using a hash map.
 class PathCache_hash:public PathCache{
       pthread_mutex_t mutex;
 
-      class CElem;
+      class CEntry;
 
-      typedef std::tr1::unordered_map<std::string,CElem> Cache;
-      typedef std::list<std::string> Queue;
+      typedef std::tr1::unordered_map<std::string, std::tr1::shared_ptr<CEntry> > PathMap;
+      typedef std::list<std::tr1::shared_ptr<CEntry> > Queue;
 
-      class Access{
+      class CEntry{
 	 public:
-	    Access(uid_t uid,gid_t gid,mode_t mode):uid(uid),gid(gid),mode(mode) {}
-	    uid_t uid;
-	    gid_t gid;
-	    mode_t mode;
+	    class Data{
+	       public:
+		  std::string path;
+		  uint64_t nodeid;
+		  std::tr1::shared_ptr<CEntry> parent;
+
+		  uid_t uid;
+		  gid_t gid;
+		  mode_t mode;
+
+		  Queue::iterator queue_it;
+	    } *data;
+
+	    CEntry(){
+	       data=new Data;
+	    }
+
+	    ~CEntry(){
+	       invalidate();
+	    }
+
+	    void invalidate(){
+	       if(data){
+		  delete data;
+		  data = NULL;
+	       }
+	    }
+
+	    bool isValid(){
+	       return data!=NULL;
+	    }
       };
 
-      class CElem{
-	  public:
-	    CElem():nodeid(0),access(NULL) {}
-	    uint64_t nodeid;
-	    Queue::iterator qit;
-	    Access* access;
-      };
-
-      Cache cache;
+      PathMap paths;
       Queue queue;
-      int nelems;
+      int maxentries;
+      int nentries;
 
-      // Initialize a new cache entry in the position specified by cit.
-      // If the cache has reached its size limit, remove some files from the bottom of the queue.
-      void insert(Cache::iterator cit,uint64_t nodeid);
-      // Move the specified cache entry to the top of the queue.
-      void promote(Cache::iterator cit);
-      // Move the cache entry for the specified file to the top of the queue
-      // If it doesn't have a cache entry, create it by using the parent's entry
-      Cache::iterator promote(FsTxn& txns,std::string path,Cache::iterator parent,std::string leaf);
-      Cache::iterator promoteRoot(FsTxn& txns);
-      //Throw an exception if the specified cache element doesn't have search permission for the caller
-      void checkaccess(FsTxn& txns,const SContext& sctx,CElem& ce);
+      // Run f for each cache entry corresponding to a token in the
+      // path
+      template<typename F, typename ItT>
+      void withPath(F f, FsTxn& txns, const ItT& tok0, const ItT& tok1);
+
+      // Return the cache entry corresponding to the specified
+      // tokenized path
+      template<typename ItT>
+      std::tr1::shared_ptr<CEntry> lookup(FsTxn& txns, const ItT& tok0, const ItT& tok1);
+
+      // Initialize the specified cache entry
+      template<typename ItT>
+      void initEntry(FsTxn& txns, const std::tr1::shared_ptr<CEntry>& cen,
+		     const std::tr1::shared_ptr<CEntry>& parent,
+		     ItT tok0, ItT tok1);
+
+      // Remove the specified cache entry
+      void delEntry(std::tr1::shared_ptr<CEntry> cen);
+
+      // Throw an exception if the specified cache entry doesn't have
+      // search permissions for the caller
+      void checkAccess(const SContext& sctx, PathCache_hash::CEntry* cen);
 
    public:
       PathCache_hash();
       virtual ~PathCache_hash();
 
-      virtual std::auto_ptr<Node> getnode(FsTxn& txns, const SContext& sctx, std::string path);
-      virtual void invalidate(std::string path);
-      virtual void invalidateAccess(std::string path);
+      virtual std::auto_ptr<Node> getnode(FsTxn& txns, const SContext& sctx, const std::string& path);
+      virtual void invalidate(FsTxn& txns, const std::string& path);
+
 };
 
 #endif

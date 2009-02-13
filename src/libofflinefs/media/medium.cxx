@@ -44,7 +44,8 @@ std::auto_ptr<Medium> Medium::getmedium(FsTxn& txns, uint32_t id){
 }
 
 std::auto_ptr<Medium> Medium::getmedium(FsTxn& txns, string label){
-   std::list<uint32_t> media = txns.dbs.media.listregisters(txns.media);
+   std::list<uint32_t> media;
+   txns.dbs.media.getregisters(txns.media,media);
 
    for(std::list<uint32_t>::iterator it = media.begin();
        it != media.end(); it++){

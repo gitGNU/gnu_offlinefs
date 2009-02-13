@@ -119,7 +119,11 @@ class Database{
 	    // doesn't exist
 	    void delattr(std::string name);
 
-	    std::list<std::string> getattrs();
+	    // Append the existing attribute names to the specified container
+	    template<typename ConT> void getattrs(ConT& attrs);
+
+	    // Return the number of existing attributes
+	    int countattrs();
       };
 
       Database(Environment& env,std::string name);
@@ -132,8 +136,8 @@ class Database{
       // Initialize a new register, and return its ID
       IdT createregister(Txn& txn);
 
-      std::list<IdT> listregisters(Txn& txn);
-
+      // Append the existing register IDs to the specified container
+      template<typename ConT> void getregisters(Txn& txn, ConT& regs);
 };
 
 // Endianness conversion functions
@@ -236,17 +240,17 @@ IdT Database<IdT>::createregister(Txn& txn){
 }
 
 template<typename IdT>
-std::list<IdT> Database<IdT>::listregisters(Txn& txn){
+template<typename ConT>
+void Database<IdT>::getregisters(Txn& txn, ConT& regs){
    IdT lastid=(IdT)-1;
    Dbt k;
    Dbt v;
-   std::list<IdT> l;
 
    int err=txn.cur->get(&k,&v,DB_FIRST|DB_RMW);
    while(!err && k.get_size()>=sizeof(typename Register::Key)){
       IdT id=((typename Register::Key*)k.get_data())->id;
       if(id!=lastid){
-	 l.push_back(id);
+	 regs.push_back(id);
 	 lastid=id;
       }
       err=txn.cur->get(&k,&v,DB_NEXT|DB_RMW);
@@ -254,7 +258,6 @@ std::list<IdT> Database<IdT>::listregisters(Txn& txn){
 
    if(err && err!=DB_NOTFOUND)
       throw std::runtime_error("Database::listregisters: error accessing the database.");
-   return l;
 }
 
 template<typename IdT>

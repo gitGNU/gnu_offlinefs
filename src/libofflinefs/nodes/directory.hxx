@@ -36,7 +36,8 @@ class Directory:public Node{
       void addchild(std::string name, Node& n);
       void delchild(std::string name); // It throws ENotFound if the file doesn't exist
       std::auto_ptr<Node> getchild(std::string name); // It can throw ENotFound
-      std::list<std::string> getchildren() { return rdir.getattrs(); }
+      template<typename ConT> void getchildren(ConT& children) { rdir.getattrs(children); }
+      int countchildren() { return rdir.countattrs(); }
 
       virtual void remove();
 
