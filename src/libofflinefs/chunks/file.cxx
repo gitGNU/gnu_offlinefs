@@ -20,6 +20,7 @@ using std::string;
 
 Chunk_file::Chunk_file(std::string path,int mode):fd(-1){
    fd=open(path.c_str(),mode|O_CREAT,0660);
+
    if(fd==-1 && errno==ENOENT){
       //Try to create every parent directory
       string::size_type pos=0;
@@ -31,7 +32,8 @@ Chunk_file::Chunk_file(std::string path,int mode):fd(-1){
 	    if(stat(dir.c_str(),&st)){
 	       if(errno!=ENOENT || mkdir(dir.c_str(),0770))
 		  throw std::runtime_error("Chunk_file::Chunk_file: Opening file \"" + path +
-					   "\": error creating parent directories.");
+					   "\": error creating parent directories:"+
+					   string(strerror(errno)));
 	    }
 	 }
 	 pos=newpos+1;
@@ -40,7 +42,8 @@ Chunk_file::Chunk_file(std::string path,int mode):fd(-1){
    }
 
    if(fd==-1)
-      throw std::runtime_error(string("Chunk_file::Chunk_file: Error opening file \"")+ path +"\".");
+      throw std::runtime_error(string("Chunk_file::Chunk_file: Error opening file \"")+ path +"\": "+
+			       string(strerror(errno)));
 }
 
 Chunk_file::~Chunk_file(){

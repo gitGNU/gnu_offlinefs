@@ -48,7 +48,37 @@ void Medium_directory::addfile(string phid){}
 
 void Medium_directory::delfile(string phid){
    if(string(getattrv("unlink_files")) == "true"){
-      string path = string(getattrv("directory")) + "/" + phid;
+      string base_dir = getattrv("directory");
+      string path = base_dir + "/" + phid;
+
       unlink(path.c_str());
+
+      // Remove each empty parent directory
+      string::size_type pos = string::npos;
+      struct stat st;
+
+      while(true){
+	 // Get next token
+	 if((pos = phid.find_last_of("/",pos)) == string::npos)
+	    break;
+
+	 if((pos = phid.find_last_not_of("/", pos)) == string::npos)
+	    break;
+
+	 string dir = base_dir + "/" + phid.substr(0,pos + 1);
+
+	 // Check whether it is empty
+	 if(stat(dir.c_str(), &st))
+	    throw std::runtime_error("Medium_directory::Medium_directory: stat() failed: " +
+				     string(strerror(errno)));
+
+	 if(st.st_nlink > 2)
+	    break;
+
+	 // Remove it
+	 if(rmdir(dir.c_str()))
+	    throw std::runtime_error("Medium_directory::Medium_directory: rmdir() failed: " +
+				     string(strerror(errno)));
+      }
    }
 }
