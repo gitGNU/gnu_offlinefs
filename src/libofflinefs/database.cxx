@@ -24,14 +24,17 @@ Environment::Environment(std::string path):opcount(0){
       mkdir(path.c_str(),0777);
 
    dbenv=new DbEnv(0);
+   dbenv->set_flags(DB_TXN_NOSYNC,1);
+
    dbenv->open(path.c_str(),DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_CREATE|DB_RECOVER|DB_REGISTER|DB_THREAD,0);
+
 #if  DB_VERSION_MAJOR==4 && DB_VERSION_MINOR>=7
    dbenv->log_set_config(DB_LOG_AUTO_REMOVE,1);
 #else
    dbenv->set_flags(DB_LOG_AUTOREMOVE,1);
 #endif
-   dbenv->set_flags(DB_TXN_NOSYNC,1);
    dbenv->set_lk_detect(DB_LOCK_RANDOM);
+
    cleanlogs();
 }
 

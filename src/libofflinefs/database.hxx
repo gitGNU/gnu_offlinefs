@@ -95,7 +95,7 @@ class Database{
 	    Register(const Register& r);
 	    virtual ~Register();
 
-	    IdT getid() { return id; }
+	    IdT getid() const { return id; }
 	    Database<IdT>& getdb();
 
 	    virtual void remove();
