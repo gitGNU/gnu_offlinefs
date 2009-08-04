@@ -122,8 +122,8 @@ Format<T> FParser<T>::parse(std::string formatstr){
 	       std::string::size_type cpos=formatstr.find("}",pos+ssize+1);
 	       if(cpos==std::string::npos)
 		  throw std::runtime_error("Error: '{' found without matching '}'");
+	       dtok.param=formatstr.substr(pos+ssize+1,cpos-pos-ssize-1);
 	       ssize=cpos+1-pos;
-	       dtok.param=formatstr.substr(pos+ssize+1,pos+ssize+1-cpos);
 	    }else
 	       dtok.param.clear();
 
