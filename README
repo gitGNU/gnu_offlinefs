@@ -119,7 +119,7 @@ directory adding each file and each directory to the filesystem and
 associating them with the newly created medium.
 
 You could use it like this:
-$ offimport.sh -i <directory> -l <label>
+$ offimport_cd.sh -i <directory> -l <label>
 
 When trying to access a file, you will be asked to insert the volume
 with label <label>.  (Depending on the user having mounted the
