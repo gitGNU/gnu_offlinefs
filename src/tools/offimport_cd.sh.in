@@ -50,7 +50,7 @@ cdroot=""
 label=""
 prefix="/"
 
-while getopts l:i:b:s: opt; do
+while getopts l:i:b:s:p: opt; do
     case $opt in
 	l) label=$OPTARG;;
 	i) cdroot=$OPTARG;;
